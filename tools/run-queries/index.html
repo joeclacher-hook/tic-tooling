@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Run Queries</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1d23;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1d23;
+      color: #fff;
+      padding: 0 2rem;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header a { color: #8b9ab0; text-decoration: none; font-size: 0.85rem; }
+    header a:hover { color: #fff; }
+    header .sep { color: #3d4555; }
+    header h1 { font-size: 1.05rem; font-weight: 600; flex: 1; }
+
+    .api-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 20px;
+      background: #2d3344;
+      border: 1px solid #3d4555;
+    }
+
+    .api-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #8b9ab0;
+      flex-shrink: 0;
+    }
+
+    .api-dot.up   { background: #4ade80; }
+    .api-dot.down { background: #f87171; }
+
+    #api-text { color: #8b9ab0; }
+    #api-text.up   { color: #4ade80; }
+    #api-text.down { color: #f87171; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: calc(100vh - 52px);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background: #fff;
+      border-right: 1px solid #e4e8ee;
+      padding: 1.25rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .sidebar h2 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #8b9ab0;
+    }
+
+    .divider { height: 1px; background: #e4e8ee; }
+
+    label { display: block; font-size: 0.82rem; font-weight: 500; color: #3d4555; margin-bottom: 0.3rem; }
+
+    input[type="text"], input[type="date"] {
+      width: 100%;
+      border: 1px solid #d4d9e3;
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #1a1d23;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus, input[type="date"]:focus { border-color: #4f46e5; }
+
+    .help-text { font-size: 0.75rem; color: #8b9ab0; margin-top: 0.25rem; }
+    .opt { font-weight: 400; color: #8b9ab0; }
+
+    .field { display: flex; flex-direction: column; gap: 0; }
+
+    .run-all-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #1a1d23;
+      cursor: pointer;
+    }
+
+    .run-all-wrap input { width: auto; }
+
+    .entity-actions {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .entity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      max-height: 340px;
+      overflow-y: auto;
+      border: 1px solid #e4e8ee;
+      border-radius: 6px;
+      padding: 0.4rem;
+    }
+
+    .entity-list label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #1a1d23;
+      padding: 0.2rem 0.3rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .entity-list label:hover { background: #f4f6f9; }
+    .entity-list input[type="checkbox"] { width: auto; flex-shrink: 0; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+      font-family: inherit;
+    }
+
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary  { background: #4f46e5; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4338ca; }
+    .btn-outline  { background: #fff; border: 1px solid #d4d9e3; color: #3d4555; }
+    .btn-outline:hover:not(:disabled) { border-color: #4f46e5; color: #4f46e5; }
+    .btn-xs { padding: 0.2rem 0.55rem; font-size: 0.75rem; }
+    .btn-lg { padding: 0.65rem 1.75rem; font-size: 0.95rem; }
+
+    /* ── Main ── */
+    .main { padding: 1.5rem 2rem; overflow-y: auto; }
+
+    .run-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    #run-status { font-size: 0.82rem; color: #8b9ab0; }
+
+    /* ── Results grid ── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+    }
+
+    .result-card {
+      background: #fff;
+      border: 1px solid #e4e8ee;
+      border-left-width: 3px;
+      border-left-color: #d4d9e3;
+      border-radius: 6px;
+      padding: 0.75rem 0.9rem;
+      min-height: 68px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .result-card.loading  { border-left-color: #94a3b8; }
+    .result-card.success  { border-left-color: #4ade80; }
+    .result-card.not-defined { border-left-color: #fbbf24; }
+    .result-card.error    { border-left-color: #f87171; }
+    .result-card.skipped  { border-left-color: #94a3b8; opacity: 0.6; }
+
+    .card-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #3d4555;
+      font-family: 'SF Mono', Monaco, monospace;
+      margin-bottom: 0.35rem;
+      word-break: break-all;
+    }
+
+    .card-detail {
+      font-size: 0.82rem;
+      color: #8b9ab0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .card-detail.success { color: #16a34a; font-weight: 600; }
+    .card-detail.error   { color: #dc2626; }
+    .card-detail.warn    { color: #d97706; }
+
+    .card-time { font-size: 0.72rem; color: #8b9ab0; font-weight: 400; margin-left: auto; }
+
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #d4d9e3;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .notice {
+      margin-top: 1rem;
+      font-size: 0.82rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+    }
+
+    .notice-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .notice-err  { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+    .summary-bar {
+      display: flex;
+      gap: 1.25rem;
+      font-size: 0.82rem;
+      margin-bottom: 1rem;
+    }
+
+    .summary-bar .s { display: flex; align-items: center; gap: 0.3rem; }
+    .dot-s { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot-green  { background: #4ade80; }
+    .dot-orange { background: #fbbf24; }
+    .dot-red    { background: #f87171; }
+    .dot-grey   { background: #94a3b8; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/">← Hub</a>
+  <span class="sep">/</span>
+  <h1>▶️ Run Queries</h1>
+  <div class="api-badge">
+    <span class="api-dot" id="api-dot"></span>
+    <span id="api-text">checking...</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>Config</h2>
+
+    <div class="field">
+      <label for="customer-id">Customer ID</label>
+      <input type="text" id="customer-id" placeholder="e.g. abode">
+    </div>
+
+    <div class="field">
+      <label for="datastore">Datastore</label>
+      <input type="text" id="datastore" value="s3iceberg">
+    </div>
+
+    <div class="field">
+      <label for="date-val">Date <span class="opt">(optional)</span></label>
+      <input type="date" id="date-val">
+      <p class="help-text">Defaults to 1 month ago</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Entities</h2>
+
+    <label class="run-all-wrap">
+      <input type="checkbox" id="run-all" onchange="onRunAllChange()">
+      Run all entities
+    </label>
+
+    <div id="entity-list-wrap">
+      <div class="entity-actions">
+        <button class="btn btn-xs btn-outline" onclick="selectAll()">All</button>
+        <button class="btn btn-xs btn-outline" onclick="selectNone()">None</button>
+      </div>
+      <div class="entity-list" id="entity-list"></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="run-bar">
+      <button class="btn btn-primary btn-lg" id="run-btn" onclick="run()">▶ Run</button>
+      <span id="run-status"></span>
+    </div>
+    <div id="results"></div>
+  </div>
+
+</div>
+
+<script>
+  const API_BASE = 'http://localhost:9980';
+
+  const ALL_ENTITIES = [
+    'accounts', 'account_custom_fields', 'account_integration_links',
+    'account_metas', 'account_product_max_licenses', 'account_product_metas',
+    'account_product_metrics', 'account_relationships', 'agent_account_job_roles',
+    'agents', 'cases', 'contact_product_assignments', 'contacts',
+    'daily_account_product_metrics', 'daily_user_product_metrics',
+    'dated_product_user_activities', 'email_recipients', 'email_sequences',
+    'emails', 'expansions', 'meeting_next_steps', 'meeting_participants',
+    'meetings', 'opportunities', 'query', 'subscription_metas', 'subscriptions',
+    'user_custom_fields', 'user_product_assignments', 'user_product_metrics', 'users',
+  ];
+
+  const ENTITY_CONFIG = {
+    accounts:                      { slug: 'accounts' },
+    account_custom_fields:         { slug: 'account-custom-fields',          defsSlug: 'account-custom-field-definitions',      typeKey: 'custom_field_name', typeParam: 'custom_field_name' },
+    account_integration_links:     { slug: 'account-integration-links' },
+    account_metas:                 { slug: 'account-metas' },
+    account_product_max_licenses:  { slug: 'account-product-max-licenses' },
+    account_product_metas:         { slug: 'account-product-metas' },
+    account_product_metrics:       { slug: 'account-product-metrics',        defsSlug: 'account-product-metric-definitions',    typeKey: 'metric_name',       typeParam: 'metric_name',       needsDate: true },
+    account_relationships:         { slug: 'account-relationships' },
+    agent_account_job_roles:       { slug: 'agent-account-job-roles' },
+    agents:                        { slug: 'agents' },
+    cases:                         { slug: 'cases' },
+    contact_product_assignments:   { slug: 'contact-product-assignments' },
+    contacts:                      { slug: 'contacts' },
+    daily_account_product_metrics: { slug: 'daily-account-product-metrics',  defsSlug: 'daily-account-product-metric-definitions', typeKey: 'metric_name',    typeParam: 'metric_name',       needsDate: true },
+    daily_user_product_metrics:    { slug: 'daily-user-product-metrics',     defsSlug: 'daily-user-product-metric-definitions',    typeKey: 'metric_name',    typeParam: 'metric_name',       needsDate: true },
+    dated_product_user_activities: { slug: 'dated-product-user-activities',  needsDate: true },
+    email_recipients:              { slug: 'email-recipients' },
+    email_sequences:               { slug: 'email-sequences' },
+    emails:                        { slug: 'emails', isPost: true },
+    expansions:                    { slug: 'expansions' },
+    meeting_next_steps:            { slug: 'meeting-next-steps' },
+    meeting_participants:          { slug: 'meeting-participants' },
+    meetings:                      { slug: 'meetings' },
+    opportunities:                 { slug: 'opportunities' },
+    query:                         { skip: true },
+    subscription_metas:            { slug: 'subscription-metas' },
+    subscriptions:                 { slug: 'subscriptions' },
+    user_custom_fields:            { slug: 'user-custom-fields',             defsSlug: 'user-custom-field-definitions',         typeKey: 'custom_field_name', typeParam: 'custom_field_name' },
+    user_product_assignments:      { slug: 'user-product-assignments' },
+    user_product_metrics:          { slug: 'user-product-metrics',           defsSlug: 'user-product-metric-definitions',       typeKey: 'metric_name',       typeParam: 'metric_name',       needsDate: true },
+    users:                         { slug: 'users' },
+  };
+
+  // ── Entity list ───────────────────────────────────────────────────────────────
+
+  function initEntityList() {
+    const el = document.getElementById('entity-list');
+    ALL_ENTITIES.forEach(e => {
+      const lbl = document.createElement('label');
+      lbl.innerHTML = `<input type="checkbox" name="entity" value="${e}" checked> ${e}`;
+      el.appendChild(lbl);
+    });
+  }
+
+  function onRunAllChange() {
+    document.getElementById('entity-list-wrap').style.display =
+      document.getElementById('run-all').checked ? 'none' : '';
+  }
+
+  function selectAll()  { document.querySelectorAll('#entity-list input').forEach(cb => cb.checked = true); }
+  function selectNone() { document.querySelectorAll('#entity-list input').forEach(cb => cb.checked = false); }
+
+  function getSelectedEntities() {
+    return [...document.querySelectorAll('#entity-list input:checked')].map(cb => cb.value);
+  }
+
+  // ── API status ────────────────────────────────────────────────────────────────
+
+  async function checkApi() {
+    const dot  = document.getElementById('api-dot');
+    const text = document.getElementById('api-text');
+    try {
+      const r = await fetch(`${API_BASE}/`, { signal: AbortSignal.timeout(2500) });
+      const ok = r.ok;
+      dot.className  = `api-dot ${ok ? 'up' : 'down'}`;
+      text.className = ok ? 'up' : 'down';
+      text.textContent = ok ? 'API running on :9980' : 'API error';
+    } catch {
+      dot.className  = 'api-dot down';
+      text.className = 'down';
+      text.textContent = 'API not running';
+    }
+  }
+
+  setInterval(checkApi, 3000);
+  checkApi();
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+
+  function getDefaultDate() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function cardId(entity, type) {
+    return ('card-' + entity + (type ? '-' + type : '')).replace(/[^a-z0-9-]/g, '-');
+  }
+
+  function createCard(grid, id, label) {
+    const card = document.createElement('div');
+    card.className = 'result-card loading';
+    card.id = id;
+    card.innerHTML = `
+      <div class="card-name">${escHtml(label)}</div>
+      <div class="card-detail"><span class="spinner"></span> running…</div>`;
+    grid.appendChild(card);
+    return card;
+  }
+
+  function setCardSuccess(id, count, elapsed) {
+    const card = document.getElementById(id);
+    if (!card) return;
+    card.className = 'result-card success';
+    card.querySelector('.card-detail').className = 'card-detail success';
+    card.querySelector('.card-detail').innerHTML =
+      `✓ ${Number(count).toLocaleString()} rows <span class="card-time">${elapsed}s</span>`;
+  }
+
+  function setCardNotDefined(id) {
+    const card = document.getElementById(id);
+    if (!card) return;
+    card.className = 'result-card not-defined';
+    card.querySelector('.card-detail').className = 'card-detail warn';
+    card.querySelector('.card-detail').textContent = 'not defined';
+  }
+
+  function setCardError(id, msg) {
+    const card = document.getElementById(id);
+    if (!card) return;
+    card.className = 'result-card error';
+    card.querySelector('.card-detail').className = 'card-detail error';
+    card.querySelector('.card-detail').textContent = msg.slice(0, 80);
+  }
+
+  function setCardSkipped(id) {
+    const card = document.getElementById(id);
+    if (!card) return;
+    card.className = 'result-card skipped';
+    card.querySelector('.card-detail').className = 'card-detail';
+    card.querySelector('.card-detail').textContent = 'not supported in web';
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ── Run ───────────────────────────────────────────────────────────────────────
+
+  async function run() {
+    const customer  = document.getElementById('customer-id').value.trim();
+    const datastore = document.getElementById('datastore').value.trim() || 's3iceberg';
+    const date      = document.getElementById('date-val').value || getDefaultDate();
+    const runAll    = document.getElementById('run-all').checked;
+    const entities  = runAll ? ALL_ENTITIES : getSelectedEntities();
+
+    if (!customer)      { alert('Enter a Customer ID first.'); return; }
+    if (!entities.length) { alert('Select at least one entity.'); return; }
+
+    const runBtn = document.getElementById('run-btn');
+    const statusEl = document.getElementById('run-status');
+    runBtn.disabled = true;
+    statusEl.textContent = 'Fetching definitions…';
+
+    const resultsEl = document.getElementById('results');
+    resultsEl.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'results-grid';
+    resultsEl.appendChild(grid);
+
+    // Separate entities into simple vs complex (need definitions first)
+    const simpleEntities  = entities.filter(e => !ENTITY_CONFIG[e]?.defsSlug && !ENTITY_CONFIG[e]?.skip);
+    const complexEntities = entities.filter(e =>  ENTITY_CONFIG[e]?.defsSlug);
+    const skippedEntities = entities.filter(e =>  ENTITY_CONFIG[e]?.skip);
+
+    // Create skipped cards immediately
+    skippedEntities.forEach(e => {
+      const id = cardId(e, null);
+      createCard(grid, id, e);
+      setCardSkipped(id);
+    });
+
+    // Fetch all definitions in parallel, then create cards
+    const defsResults = await Promise.all(complexEntities.map(async entity => {
+      const cfg = ENTITY_CONFIG[entity];
+      try {
+        const url = `${API_BASE}/v0/customers/${encodeURIComponent(customer)}/${cfg.defsSlug}?datastores=${encodeURIComponent(datastore)}`;
+        const resp = await fetch(url, { signal: AbortSignal.timeout(30000) });
+        const data = await resp.json();
+        if (!resp.ok) return { entity, types: [] };
+        return { entity, types: (data.items || []).map(i => i[cfg.typeKey]).filter(Boolean) };
+      } catch {
+        return { entity, types: [] };
+      }
+    }));
+
+    // Build the full run list
+    const runs = [];
+
+    // Simple entities
+    simpleEntities.forEach(entity => {
+      const cfg = ENTITY_CONFIG[entity];
+      const id  = cardId(entity, null);
+      createCard(grid, id, entity);
+      runs.push({ id, entity, cfg, customer, datastore, date, type: null });
+    });
+
+    // Complex entities expanded into one card per type
+    defsResults.forEach(({ entity, types }) => {
+      const cfg = ENTITY_CONFIG[entity];
+      if (!types.length) {
+        const id = cardId(entity, null);
+        createCard(grid, id, entity);
+        setCardNotDefined(id);
+        return;
+      }
+      types.forEach(type => {
+        const id    = cardId(entity, type);
+        const label = `${entity} · ${type}`;
+        createCard(grid, id, label);
+        runs.push({ id, entity, cfg, customer, datastore, date, type });
+      });
+    });
+
+    statusEl.textContent = `Running ${runs.length} queries…`;
+
+    // Fire all in parallel, update cards as they complete
+    let done = 0;
+    await Promise.all(runs.map(async run => {
+      await runOne(run);
+      done++;
+      statusEl.textContent = `${done} / ${runs.length} complete`;
+    }));
+
+    // Summary
+    const cards   = [...grid.querySelectorAll('.result-card')];
+    const nOk     = cards.filter(c => c.classList.contains('success')).length;
+    const nWarn   = cards.filter(c => c.classList.contains('not-defined')).length;
+    const nErr    = cards.filter(c => c.classList.contains('error')).length;
+    const nSkip   = cards.filter(c => c.classList.contains('skipped')).length;
+
+    const summaryEl = document.createElement('div');
+    summaryEl.className = 'summary-bar';
+    summaryEl.innerHTML = `
+      <span class="s"><span class="dot-s dot-green"></span> ${nOk} success</span>
+      ${nWarn ? `<span class="s"><span class="dot-s dot-orange"></span> ${nWarn} not defined</span>` : ''}
+      ${nErr  ? `<span class="s"><span class="dot-s dot-red"></span> ${nErr} errors</span>` : ''}
+      ${nSkip ? `<span class="s"><span class="dot-s dot-grey"></span> ${nSkip} skipped</span>` : ''}`;
+    resultsEl.insertBefore(summaryEl, grid);
+
+    statusEl.textContent = 'Done';
+    runBtn.disabled = false;
+  }
+
+  async function runOne({ id, entity, cfg, customer, datastore, date, type }) {
+    const start = Date.now();
+    try {
+      let url, method = 'GET', body = null;
+
+      if (cfg.isPost) {
+        url    = `${API_BASE}/v0/customers/${encodeURIComponent(customer)}/${cfg.slug}`;
+        method = 'POST';
+        body   = JSON.stringify({ datastore });
+      } else {
+        const params = new URLSearchParams({ datastore });
+        if (type && cfg.typeParam) params.set(cfg.typeParam, type);
+        if (cfg.needsDate) params.set('date', date);
+        url = `${API_BASE}/v0/customers/${encodeURIComponent(customer)}/${cfg.slug}?${params}`;
+      }
+
+      const resp = await fetch(url, {
+        method,
+        headers: method === 'POST' ? { 'Content-Type': 'application/json' } : {},
+        ...(body ? { body } : {}),
+        signal: AbortSignal.timeout(300000),
+      });
+
+      const data    = await resp.json();
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+
+      if (!resp.ok) {
+        if (data.exceptionType === 'DugDefinitionNotFoundException') {
+          setCardNotDefined(id);
+        } else {
+          setCardError(id, data.message || `HTTP ${resp.status}`);
+        }
+        return;
+      }
+
+      const count = data.total_count ?? data.items?.length ?? 0;
+      setCardSuccess(id, count, elapsed);
+    } catch (e) {
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+      setCardError(id, e.name === 'TimeoutError' ? 'timed out' : e.message);
+    }
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+
+  initEntityList();
+</script>
+</body>
+</html>
