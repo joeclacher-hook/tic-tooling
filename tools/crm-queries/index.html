@@ -52,17 +52,47 @@
       margin-bottom: 1rem;
     }
 
-    .sidebar pre {
+    .cmd-block {
       background: #f4f6f9;
       border: 1px solid #e4e8ee;
       border-radius: 6px;
-      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+
+    .cmd-block pre {
+      padding: 0.65rem 0.75rem;
       font-size: 0.78rem;
-      color: #5a6478;
-      margin-bottom: 1rem;
+      font-family: 'SF Mono', Monaco, monospace;
+      color: #1a1d23;
       white-space: pre-wrap;
       line-height: 1.6;
     }
+
+    .cmd-block-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0.3rem 0.5rem;
+      border-top: 1px solid #e4e8ee;
+      background: #eef0f5;
+    }
+
+    .copy-btn {
+      border: none;
+      background: none;
+      font-size: 0.75rem;
+      color: #5a6478;
+      cursor: pointer;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .copy-btn:hover { background: #dde1ea; color: #1a1d23; }
+    .copy-btn.copied { color: #065f46; }
 
     label { display: block; font-size: 0.82rem; font-weight: 500; color: #3d4555; margin-bottom: 0.3rem; }
 
@@ -268,10 +298,26 @@
   <!-- Sidebar: AWS credentials -->
   <div class="sidebar">
     <h2>AWS Credentials</h2>
-    <pre>aws sso login --profile hook-production-tic
 
-aws configure export-credentials \
-  --profile hook-production-tic</pre>
+    <div class="cmd-block">
+      <pre>aws sso login --profile hook-production-tic</pre>
+      <div class="cmd-block-footer">
+        <button class="copy-btn" onclick="copyCmd(this, 'aws sso login --profile hook-production-tic')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
+
+    <div class="cmd-block">
+      <pre>aws configure export-credentials --profile hook-production-tic</pre>
+      <div class="cmd-block-footer">
+        <button class="copy-btn" onclick="copyCmd(this, 'aws configure export-credentials --profile hook-production-tic')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
 
     <div class="field">
       <label for="creds-json">Paste credentials JSON</label>
@@ -428,6 +474,21 @@ aws configure export-credentials \
 </div><!-- /layout -->
 
 <script>
+  // ── Copy command ─────────────────────────────────────────────────────────────
+
+  function copyCmd(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.classList.add('copied');
+      btn.querySelector('svg').style.display = 'none';
+      btn.childNodes[btn.childNodes.length - 1].textContent = ' Copied!';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.querySelector('svg').style.display = '';
+        btn.childNodes[btn.childNodes.length - 1].textContent = ' Copy';
+      }, 2000);
+    });
+  }
+
   // ── State ────────────────────────────────────────────────────────────────────
 
   let awsCredentials = null;
