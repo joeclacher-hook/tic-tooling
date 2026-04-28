@@ -1,0 +1,5 @@
+{
+  "name": "Integration Secrets",
+  "description": "Look up integration credentials from AWS Secrets Manager for any customer",
+  "icon": "🔑"
+}

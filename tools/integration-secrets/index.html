@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integration Secrets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1d23;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1d23;
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header a { color: #8b9ab0; text-decoration: none; font-size: 0.85rem; }
+    header a:hover { color: #fff; }
+    header .sep { color: #3d4555; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 56px);
+    }
+
+    .sidebar {
+      background: #fff;
+      border-right: 1px solid #e4e8ee;
+      padding: 1.5rem 1.25rem;
+      overflow-y: auto;
+    }
+
+    .sidebar h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8b9ab0;
+      margin-bottom: 1rem;
+    }
+
+    .cmd-block {
+      background: #f4f6f9;
+      border: 1px solid #e4e8ee;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+
+    .cmd-block pre {
+      padding: 0.65rem 0.75rem;
+      font-size: 0.78rem;
+      font-family: 'SF Mono', Monaco, monospace;
+      color: #1a1d23;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .cmd-block-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0.3rem 0.5rem;
+      border-top: 1px solid #e4e8ee;
+      background: #eef0f5;
+    }
+
+    .copy-btn {
+      border: none;
+      background: none;
+      font-size: 0.75rem;
+      color: #5a6478;
+      cursor: pointer;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .copy-btn:hover { background: #dde1ea; color: #1a1d23; }
+    .copy-btn.copied { color: #065f46; }
+
+    label { display: block; font-size: 0.82rem; font-weight: 500; color: #3d4555; margin-bottom: 0.3rem; }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      border: 1px solid #d4d9e3;
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #1a1d23;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus, input:focus { border-color: #4f46e5; }
+    textarea { resize: vertical; font-family: 'SF Mono', Monaco, monospace; font-size: 0.78rem; }
+
+    .field { margin-bottom: 0.9rem; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4338ca; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    .status {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: 6px;
+    }
+
+    .status-ok   { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status-err  { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-warn { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .status-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+    .main { padding: 1.5rem 2rem; overflow-y: auto; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+
+    .help-text { font-size: 0.78rem; color: #8b9ab0; margin-top: 0.3rem; }
+
+    /* ── Secret cards ── */
+    .secrets-grid { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .secret-card {
+      background: #fff;
+      border: 1px solid #e4e8ee;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .secret-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      user-select: none;
+      background: #fff;
+      transition: background 0.1s;
+    }
+
+    .secret-header:hover { background: #fafbfc; }
+
+    .secret-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #1a1d23;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .secret-tag {
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+
+    .secret-tag.error {
+      background: #fef2f2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+
+    .chevron {
+      color: #8b9ab0;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .secret-card.open .chevron { transform: rotate(90deg); }
+
+    .secret-body {
+      display: none;
+      border-top: 1px solid #e4e8ee;
+    }
+
+    .secret-card.open .secret-body { display: block; }
+
+    .kv-table { width: 100%; border-collapse: collapse; }
+
+    .kv-table tr:not(:last-child) td { border-bottom: 1px solid #f0f2f6; }
+
+    .kv-table td {
+      padding: 0.5rem 1rem;
+      font-size: 0.82rem;
+      vertical-align: top;
+    }
+
+    .kv-key {
+      font-weight: 600;
+      color: #3d4555;
+      white-space: nowrap;
+      width: 1%;
+      padding-right: 1.5rem;
+    }
+
+    .kv-val {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.8rem;
+      color: #1a1d23;
+      word-break: break-all;
+    }
+
+    .kv-copy {
+      text-align: right;
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    .copy-val-btn {
+      border: none;
+      background: none;
+      font-size: 0.72rem;
+      color: #8b9ab0;
+      cursor: pointer;
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .copy-val-btn:hover { background: #f0f2f6; color: #3d4555; }
+    .copy-val-btn.copied { color: #065f46; }
+
+    .raw-block {
+      padding: 0.75rem 1rem;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.78rem;
+      color: #3d4555;
+      background: #f8f9fb;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #d4d9e3;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .results-label { font-size: 0.85rem; font-weight: 500; color: #3d4555; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/">← Hub</a>
+  <span class="sep">/</span>
+  <h1>🔑 Integration Secrets</h1>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar: AWS credentials -->
+  <div class="sidebar">
+    <h2>AWS Credentials</h2>
+
+    <div class="cmd-block">
+      <pre>aws sso login --profile hook-production-tic</pre>
+      <div class="cmd-block-footer">
+        <button class="copy-btn" onclick="copyCmd(this, 'aws sso login --profile hook-production-tic')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
+
+    <div class="cmd-block">
+      <pre>aws configure export-credentials --profile hook-production-tic</pre>
+      <div class="cmd-block-footer">
+        <button class="copy-btn" onclick="copyCmd(this, 'aws configure export-credentials --profile hook-production-tic')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="creds-json">Paste credentials JSON</label>
+      <textarea id="creds-json" rows="9" placeholder='{"AccessKeyId":"ASIA...","SecretAccessKey":"...","SessionToken":"...","Expiration":"..."}'></textarea>
+    </div>
+
+    <div class="field">
+      <label for="region">AWS Region</label>
+      <input type="text" id="region" value="eu-west-1">
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="loadCredentials()">Load Credentials</button>
+    <div id="creds-status"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="form-row">
+      <div class="field">
+        <label for="customer">Customer name</label>
+        <input type="text" id="customer" placeholder="e.g. acme" oninput="updateSecretPath()">
+        <p class="help-text" id="secret-path-hint"></p>
+      </div>
+      <div class="field">
+        <label for="object-filter">Integration filter <span style="font-weight:400;color:#8b9ab0">(optional)</span></label>
+        <input type="text" id="object-filter" placeholder="e.g. salesforce, hubspot">
+        <p class="help-text">Exact match on the part after the last /</p>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="fetch-btn" onclick="fetchSecrets()">🔍 Fetch Secrets</button>
+
+    <div id="results"></div>
+  </div>
+
+</div>
+
+<script>
+  let awsCredentials = null;
+  let awsRegion = 'eu-west-1';
+
+  function copyCmd(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.classList.add('copied');
+      btn.querySelector('svg').style.display = 'none';
+      btn.childNodes[btn.childNodes.length - 1].textContent = ' Copied!';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.querySelector('svg').style.display = '';
+        btn.childNodes[btn.childNodes.length - 1].textContent = ' Copy';
+      }, 2000);
+    });
+  }
+
+  function loadCredentials() {
+    const raw = document.getElementById('creds-json').value.trim();
+    const statusEl = document.getElementById('creds-status');
+    awsRegion = document.getElementById('region').value.trim() || 'eu-west-1';
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed.AccessKeyId || !parsed.SecretAccessKey) throw new Error('Missing AccessKeyId or SecretAccessKey');
+
+      const expired = parsed.Expiration && new Date(parsed.Expiration) < new Date();
+      if (expired) {
+        awsCredentials = null;
+        statusEl.innerHTML = '<div class="status status-err">Credentials have expired — re-auth and paste fresh credentials</div>';
+        return;
+      }
+
+      awsCredentials = parsed;
+      let msg = '✓ Credentials loaded';
+      if (parsed.Expiration) {
+        const secs = Math.floor((new Date(parsed.Expiration) - new Date()) / 1000);
+        const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+        msg += ` — expires in ${h > 0 ? h + 'h ' : ''}${m}m`;
+        statusEl.innerHTML = `<div class="status ${secs < 1800 ? 'status-warn' : 'status-ok'}">${msg}</div>`;
+      } else {
+        statusEl.innerHTML = `<div class="status status-ok">${msg}</div>`;
+      }
+    } catch (e) {
+      awsCredentials = null;
+      statusEl.innerHTML = `<div class="status status-err">Invalid JSON: ${e.message}</div>`;
+    }
+  }
+
+  function updateSecretPath() {
+    const val = document.getElementById('customer').value.trim();
+    document.getElementById('secret-path-hint').textContent = val ? `Searching: ${val}/...` : '';
+  }
+
+  async function fetchSecrets() {
+    if (!awsCredentials) return alert('Load AWS credentials first.');
+    const customer = document.getElementById('customer').value.trim();
+    if (!customer) return alert('Enter a customer name.');
+
+    const objectFilter = document.getElementById('object-filter').value.trim();
+    const btn = document.getElementById('fetch-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Fetching…';
+
+    const resultsEl = document.getElementById('results');
+    resultsEl.innerHTML = '';
+
+    try {
+      const resp = await fetch('/api/integration-secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credentials: awsCredentials, region: awsRegion, customer, objectFilter }),
+      });
+
+      const text = await resp.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        throw new Error(`Function not reachable (HTTP ${resp.status}). Check Netlify → Functions tab.`);
+      }
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+
+      renderSecrets(data.secrets, customer, objectFilter);
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="status status-err" style="margin-top:1.5rem">Error: ${escHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Fetch Secrets';
+    }
+  }
+
+  function renderSecrets(secrets, customer, objectFilter) {
+    const el = document.getElementById('results');
+
+    if (!secrets.length) {
+      const hint = objectFilter ? ` matching "${objectFilter}"` : '';
+      el.innerHTML = `<div class="status status-info" style="margin-top:1.5rem">No secrets found for <strong>${escHtml(customer)}/</strong>${escHtml(hint)}.</div>`;
+      return;
+    }
+
+    const label = `${secrets.length} secret${secrets.length !== 1 ? 's' : ''} found`;
+    const cards = secrets.map((s, i) => buildCard(s, i)).join('');
+
+    el.innerHTML = `
+      <div class="results-header" style="margin-top:1.5rem">
+        <span class="results-label">${label}</span>
+      </div>
+      <div class="secrets-grid">${cards}</div>`;
+  }
+
+  function buildCard(secret, idx) {
+    const shortName = secret.name.split('/').pop();
+
+    if (secret.error) {
+      return `
+        <div class="secret-card">
+          <div class="secret-header" onclick="toggleCard(${idx})">
+            <span class="secret-name">${escHtml(secret.name)}</span>
+            <div style="display:flex;align-items:center;gap:0.5rem">
+              <span class="secret-tag error">error</span>
+            </div>
+          </div>
+          <div class="secret-body" id="card-body-${idx}">
+            <div class="raw-block">${escHtml(secret.error)}</div>
+          </div>
+        </div>`;
+    }
+
+    let bodyHtml;
+    if (secret.parsed && typeof secret.parsed === 'object' && !Array.isArray(secret.parsed)) {
+      const rows = Object.entries(secret.parsed).map(([k, v]) => `
+        <tr>
+          <td class="kv-key">${escHtml(k)}</td>
+          <td class="kv-val">${escHtml(String(v ?? ''))}</td>
+          <td class="kv-copy">
+            <button class="copy-val-btn" onclick="copyValue(this, ${JSON.stringify(String(v ?? ''))})">Copy</button>
+          </td>
+        </tr>`).join('');
+      bodyHtml = `<table class="kv-table">${rows}</table>`;
+    } else {
+      bodyHtml = `<div class="raw-block">${escHtml(secret.raw)}</div>`;
+    }
+
+    const tag = shortName !== secret.name.split('/').slice(-1)[0]
+      ? `<span class="secret-tag">${escHtml(shortName)}</span>`
+      : `<span class="secret-tag">${escHtml(shortName)}</span>`;
+
+    return `
+      <div class="secret-card" id="card-${idx}">
+        <div class="secret-header" onclick="toggleCard(${idx})">
+          <span class="secret-name">${escHtml(secret.name)}</span>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            ${tag}
+            <svg class="chevron" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M6 3l5 5-5 5V3z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="secret-body" id="card-body-${idx}">${bodyHtml}</div>
+      </div>`;
+  }
+
+  function toggleCard(idx) {
+    document.getElementById(`card-${idx}`).classList.toggle('open');
+  }
+
+  function copyValue(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.classList.add('copied');
+      btn.textContent = 'Copied!';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.textContent = 'Copy';
+      }, 1500);
+    });
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
