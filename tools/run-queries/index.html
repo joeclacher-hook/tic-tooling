@@ -270,6 +270,62 @@
     .dot-orange { background: #fbbf24; }
     .dot-red    { background: #f87171; }
     .dot-grey   { background: #94a3b8; }
+
+    /* ── Changed files panel ── */
+    .cmd-block {
+      background: #f4f6f9;
+      border: 1px solid #e4e8ee;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .cmd-block pre {
+      padding: 0.5rem 0.65rem;
+      font-size: 0.72rem;
+      font-family: 'SF Mono', Monaco, monospace;
+      color: #1a1d23;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    .cmd-block-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0.2rem 0.4rem;
+      border-top: 1px solid #e4e8ee;
+      background: #eef0f5;
+    }
+
+    .copy-btn {
+      border: none;
+      background: none;
+      font-size: 0.72rem;
+      color: #5a6478;
+      cursor: pointer;
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      font-family: inherit;
+    }
+
+    .copy-btn:hover { background: #dde1ea; color: #1a1d23; }
+
+    textarea {
+      width: 100%;
+      border: 1px solid #d4d9e3;
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.75rem;
+      font-family: 'SF Mono', Monaco, monospace;
+      color: #1a1d23;
+      background: #fff;
+      outline: none;
+      resize: vertical;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus { border-color: #4f46e5; }
+
+    .changed-status { font-size: 0.75rem; margin-top: 0.35rem; min-height: 1rem; }
   </style>
 </head>
 <body>
@@ -321,6 +377,30 @@
         <button class="btn btn-xs btn-outline" onclick="selectNone()">None</button>
       </div>
       <div class="entity-list" id="entity-list"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Changed Files</h2>
+
+    <label class="run-all-wrap">
+      <input type="checkbox" id="changed-only" onchange="onChangedOnlyChange()">
+      Changed files only
+    </label>
+
+    <div id="changed-files-wrap" style="display:none; flex-direction: column; gap: 0.5rem;">
+      <p class="help-text">Run this in your dug directory and paste the output:</p>
+      <div class="cmd-block">
+        <pre>git status --porcelain; git diff --name-only origin/main...HEAD</pre>
+        <div class="cmd-block-footer">
+          <button class="copy-btn" onclick="copyGitCmd(this)">Copy</button>
+        </div>
+      </div>
+      <div class="field">
+        <textarea id="git-output" rows="5" placeholder="Paste output here…"></textarea>
+      </div>
+      <button class="btn btn-outline btn-xs" onclick="applyChangedFiles()" style="align-self:flex-start">Apply</button>
+      <div class="changed-status" id="changed-status"></div>
     </div>
   </div>
 
@@ -396,8 +476,80 @@
   }
 
   function onRunAllChange() {
-    document.getElementById('entity-list-wrap').style.display =
-      document.getElementById('run-all').checked ? 'none' : '';
+    const isAll = document.getElementById('run-all').checked;
+    document.getElementById('entity-list-wrap').style.display = isAll ? 'none' : '';
+    if (isAll) {
+      document.getElementById('changed-only').checked = false;
+      document.getElementById('changed-files-wrap').style.display = 'none';
+    }
+  }
+
+  function onChangedOnlyChange() {
+    const checked = document.getElementById('changed-only').checked;
+    document.getElementById('changed-files-wrap').style.display = checked ? 'flex' : 'none';
+    if (!checked) {
+      document.getElementById('changed-status').textContent = '';
+      selectAll();
+    }
+  }
+
+  function copyGitCmd(btn) {
+    const cmd = 'git status --porcelain; git diff --name-only origin/main...HEAD';
+    navigator.clipboard.writeText(cmd).then(() => {
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  }
+
+  function applyChangedFiles() {
+    const customer  = document.getElementById('customer-id').value.trim();
+    const datastore = document.getElementById('datastore').value.trim() || 's3iceberg';
+    const raw       = document.getElementById('git-output').value;
+    const statusEl  = document.getElementById('changed-status');
+
+    if (!customer) { alert('Enter a Customer ID first.'); return; }
+    if (!raw.trim()) { statusEl.innerHTML = '<span style="color:#d97706">Paste the git output first.</span>'; return; }
+
+    const prefix = `dug/customers/${customer}/${datastore}/`;
+    const changedPaths = new Set();
+
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trimEnd();
+      if (!trimmed) continue;
+      let path;
+      // git status --porcelain: "XY filename" — two status chars then a space
+      if (/^.{2} /.test(trimmed)) {
+        path = trimmed.slice(3).trim();
+        if (path.includes(' -> ')) path = path.split(' -> ').pop();
+      } else {
+        // git diff --name-only: bare path
+        path = trimmed.trim();
+      }
+      changedPaths.add(path);
+    }
+
+    const changedEntities = new Set();
+    for (const path of changedPaths) {
+      if (!path.startsWith(prefix) || !path.endsWith('.sql')) continue;
+      const stem = path.slice(prefix.length, -4);
+      for (const entity of ALL_ENTITIES) {
+        if (stem === entity || stem.startsWith(entity + '_')) {
+          changedEntities.add(entity);
+          break;
+        }
+      }
+    }
+
+    document.querySelectorAll('#entity-list input').forEach(cb => {
+      cb.checked = changedEntities.has(cb.value);
+    });
+
+    if (changedEntities.size === 0) {
+      statusEl.innerHTML = '<span style="color:#d97706">No changed entities found — check Customer ID and datastore match.</span>';
+    } else {
+      const names = [...changedEntities].join(', ');
+      statusEl.innerHTML = `<span style="color:#16a34a">✓ ${changedEntities.size} entit${changedEntities.size === 1 ? 'y' : 'ies'} selected: ${escHtml(names)}</span>`;
+    }
   }
 
   function selectAll()  { document.querySelectorAll('#entity-list input').forEach(cb => cb.checked = true); }
