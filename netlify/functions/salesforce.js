@@ -47,6 +47,8 @@ async function handle(body) {
 async function getToken(creds, instanceUrl) {
   const tokenUrl = `${instanceUrl}/services/oauth2/token`;
 
+  const errors = [];
+
   if (creds.refresh_token) {
     try {
       const r = await tFetch(tokenUrl, {
@@ -59,8 +61,10 @@ async function getToken(creds, instanceUrl) {
           refresh_token: creds.refresh_token,
         }).toString(),
       });
-      if (r.ok) return (await r.json()).access_token;
-    } catch { /* fall through */ }
+      const data = await r.json();
+      if (r.ok) return data.access_token;
+      errors.push(`refresh_token: ${data.error_description || data.error}`);
+    } catch (e) { errors.push(`refresh_token: ${e.message}`); }
   }
 
   if (creds.username && creds.password) {
@@ -76,21 +80,31 @@ async function getToken(creds, instanceUrl) {
           password: creds.password + (creds.security_token || ''),
         }).toString(),
       });
-      if (r.ok) return (await r.json()).access_token;
-    } catch { /* fall through */ }
+      const data = await r.json();
+      if (r.ok) return data.access_token;
+      errors.push(`password: ${data.error_description || data.error}`);
+    } catch (e) { errors.push(`password: ${e.message}`); }
   }
 
-  const r = await tFetch(tokenUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: creds.client_id,
-      client_secret: creds.client_secret,
-    }).toString(),
-  });
-  if (!r.ok) throw new Error(`Salesforce auth failed: ${await r.text()}`);
-  return (await r.json()).access_token;
+  // Use a stored access_token directly if present
+  if (creds.access_token) return creds.access_token;
+
+  try {
+    const r = await tFetch(tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: creds.client_id,
+        client_secret: creds.client_secret,
+      }).toString(),
+    });
+    const data = await r.json();
+    if (r.ok) return data.access_token;
+    errors.push(`client_credentials: ${data.error_description || data.error}`);
+  } catch (e) { errors.push(`client_credentials: ${e.message}`); }
+
+  throw new Error(`Salesforce auth failed — tried: ${errors.join(' | ')}`);
 }
 
 function sfHeaders(token) {
