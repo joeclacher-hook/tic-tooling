@@ -1,5 +1,0 @@
-{
-  "name": "Run Queries",
-  "description": "Run entity queries against the local dug API and check row counts",
-  "icon": "▶️"
-}
