@@ -1,5 +1,6 @@
 # TIC Tooling — Internal Tools Hub
 
+https://github.com/joeclacher-hook/tic-tooling/
 A Netlify site that acts as a hub for internal tools. Each tool lives in its own folder under `tools/`. The hub index page is auto-generated on every deploy from the `tool.json` files.
 
 ## Repo structure
