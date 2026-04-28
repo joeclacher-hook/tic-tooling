@@ -4,6 +4,13 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."hubspot"]
+  runtime = "python3.9"
+
+[functions."salesforce"]
+  runtime = "python3.9"
 
 [[redirects]]
   from = "/api/*"
