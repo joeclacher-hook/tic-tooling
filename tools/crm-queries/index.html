@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM Query Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1d23;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1d23;
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header a { color: #8b9ab0; text-decoration: none; font-size: 0.85rem; }
+    header a:hover { color: #fff; }
+    header .sep { color: #3d4555; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ── Sidebar (credentials) ── */
+    .sidebar {
+      background: #fff;
+      border-right: 1px solid #e4e8ee;
+      padding: 1.5rem 1.25rem;
+      overflow-y: auto;
+    }
+
+    .sidebar h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8b9ab0;
+      margin-bottom: 1rem;
+    }
+
+    .sidebar pre {
+      background: #f4f6f9;
+      border: 1px solid #e4e8ee;
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-size: 0.78rem;
+      color: #5a6478;
+      margin-bottom: 1rem;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    label { display: block; font-size: 0.82rem; font-weight: 500; color: #3d4555; margin-bottom: 0.3rem; }
+
+    textarea, input[type="text"], input[type="number"], select {
+      width: 100%;
+      border: 1px solid #d4d9e3;
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #1a1d23;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus, input:focus, select:focus { border-color: #4f46e5; }
+
+    textarea { resize: vertical; font-family: 'SF Mono', Monaco, monospace; font-size: 0.78rem; }
+
+    .field { margin-bottom: 0.9rem; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4338ca; }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+    .btn-outline { background: #fff; border: 1px solid #d4d9e3; color: #3d4555; }
+    .btn-outline:hover:not(:disabled) { border-color: #4f46e5; color: #4f46e5; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    .status {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: 6px;
+    }
+
+    .status-ok  { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status-err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-warn { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .status-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+    /* ── Main area ── */
+    .main { padding: 1.5rem 2rem; overflow-y: auto; }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      gap: 0.25rem;
+      border-bottom: 2px solid #e4e8ee;
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      border: none;
+      background: none;
+      padding: 0.65rem 1.1rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #8b9ab0;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; }
+    .tab-btn:hover:not(.active) { color: #3d4555; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Mode toggle ── */
+    .mode-toggle {
+      display: inline-flex;
+      border: 1px solid #d4d9e3;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+
+    .mode-btn {
+      border: none;
+      background: none;
+      padding: 0.45rem 1rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #8b9ab0;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .mode-btn.active { background: #4f46e5; color: #fff; }
+    .mode-btn:not(.active):hover { background: #f4f6f9; color: #3d4555; }
+
+    /* ── Form grid ── */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.9rem; }
+    .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+
+    .help-text { font-size: 0.78rem; color: #8b9ab0; margin-top: 0.3rem; }
+
+    /* ── Results ── */
+    .results-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .results-bar .label { font-size: 0.85rem; font-weight: 500; color: #3d4555; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid #e4e8ee; border-radius: 8px; }
+
+    table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+
+    th {
+      background: #f4f6f9;
+      color: #5a6478;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+      border-bottom: 1px solid #e4e8ee;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.55rem 0.8rem;
+      border-bottom: 1px solid #f0f2f6;
+      color: #1a1d23;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbfc; }
+
+    .metric-box {
+      display: inline-block;
+      background: #fff;
+      border: 1px solid #e4e8ee;
+      border-radius: 10px;
+      padding: 1.5rem 2rem;
+      text-align: center;
+    }
+
+    .metric-box .value { font-size: 2.5rem; font-weight: 700; color: #4f46e5; }
+    .metric-box .label { font-size: 0.85rem; color: #8b9ab0; margin-top: 0.25rem; }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #d4d9e3;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #results { margin-top: 1.5rem; }
+    #sf-results { margin-top: 1.5rem; }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8b9ab0;
+      margin-bottom: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/">← Hub</a>
+  <span class="sep">/</span>
+  <h1>🔍 CRM Query Tool</h1>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar: AWS credentials -->
+  <div class="sidebar">
+    <h2>AWS Credentials</h2>
+    <pre>aws sso login --profile hook-production-tic
+
+aws configure export-credentials \
+  --profile hook-production-tic</pre>
+
+    <div class="field">
+      <label for="creds-json">Paste credentials JSON</label>
+      <textarea id="creds-json" rows="9" placeholder='{"AccessKeyId":"ASIA...","SecretAccessKey":"...","SessionToken":"...","Expiration":"..."}'></textarea>
+    </div>
+
+    <div class="field">
+      <label for="region">AWS Region</label>
+      <input type="text" id="region" value="eu-west-1">
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="loadCredentials()">Load Credentials</button>
+    <div id="creds-status"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('hs')">🟠 HubSpot</button>
+      <button class="tab-btn" onclick="switchTab('sf')">🔵 Salesforce</button>
+    </div>
+
+    <!-- ── HubSpot ── -->
+    <div id="tab-hs" class="tab-panel active">
+
+      <div class="field" style="max-width:320px">
+        <label for="hs-customer">Customer name</label>
+        <input type="text" id="hs-customer" placeholder="e.g. opiniion">
+        <p class="help-text" id="hs-secret-path"></p>
+      </div>
+
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="hs-mode-query" onclick="setHsMode('query')">Query objects</button>
+        <button class="mode-btn" id="hs-mode-discover" onclick="setHsMode('discover')">Discover objects</button>
+      </div>
+
+      <!-- Query mode -->
+      <div id="hs-query-panel">
+        <div class="form-row">
+          <div class="field">
+            <label for="hs-object">Object type</label>
+            <input type="text" id="hs-object" value="contacts" placeholder="contacts, companies, deals...">
+          </div>
+          <div class="field">
+            <label for="hs-qtype">Query type</label>
+            <select id="hs-qtype" onchange="onHsQtypeChange()">
+              <option value="count">count — total records only</option>
+              <option value="list">list — ID + default properties</option>
+              <option value="all">all — every property (Excel)</option>
+              <option value="shape">shape — property schema (Excel)</option>
+              <option value="search">search — filter records</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" id="hs-limit-row">
+          <div class="field">
+            <label for="hs-limit">Record limit</label>
+            <input type="number" id="hs-limit" value="100" min="1" max="10000">
+          </div>
+          <div class="field">
+            <label for="hs-props">Properties (comma-separated, blank = default)</label>
+            <input type="text" id="hs-props" placeholder="firstname, lastname, email">
+          </div>
+        </div>
+
+        <div id="hs-search-panel" style="display:none">
+          <div class="field">
+            <label>Filters JSON</label>
+            <p class="help-text" style="margin-bottom:0.4rem">All filters ANDed. Operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, HAS_PROPERTY</p>
+            <textarea id="hs-filters" rows="5">[\n  {"propertyName": "lifecyclestage", "operator": "EQ", "value": "customer"}\n]</textarea>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="runHsQuery()" id="hs-run-btn">Run Query</button>
+      </div>
+
+      <!-- Discover mode -->
+      <div id="hs-discover-panel" style="display:none">
+        <div class="field" style="max-width:320px">
+          <label for="hs-filter">Filter by name</label>
+          <input type="text" id="hs-filter" placeholder="e.g. contact, deal">
+          <p class="help-text">Searching all objects without a filter can exceed 2000 requests</p>
+        </div>
+        <button class="btn btn-primary" onclick="runHsDiscover()" id="hs-discover-btn">Search Objects</button>
+      </div>
+
+      <div id="results"></div>
+    </div>
+
+    <!-- ── Salesforce ── -->
+    <div id="tab-sf" class="tab-panel">
+
+      <div class="field" style="max-width:320px">
+        <label for="sf-customer">Customer name</label>
+        <input type="text" id="sf-customer" placeholder="e.g. conga">
+        <p class="help-text" id="sf-secret-path"></p>
+      </div>
+
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="sf-mode-query" onclick="setSfMode('query')">Query objects</button>
+        <button class="mode-btn" id="sf-mode-discover" onclick="setSfMode('discover')">Discover objects</button>
+      </div>
+
+      <!-- Query mode -->
+      <div id="sf-query-panel">
+        <div class="form-row">
+          <div class="field">
+            <label for="sf-object">Salesforce object</label>
+            <input type="text" id="sf-object" placeholder="Contact, Account, Asset...">
+          </div>
+          <div class="field">
+            <label for="sf-qtype">Query type</label>
+            <select id="sf-qtype" onchange="onSfQtypeChange()">
+              <option value="count">count — SELECT COUNT()</option>
+              <option value="list">list — Id + Name, 20 records</option>
+              <option value="all">all — FIELDS(ALL), max 200 (Excel)</option>
+              <option value="shape">shape — field schema (Excel)</option>
+              <option value="custom">custom — write your own SOQL</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" style="max-width:200px" id="sf-limit-row">
+          <label for="sf-limit">Record limit (max 200 for 'all')</label>
+          <input type="number" id="sf-limit" value="10" min="1" max="200">
+        </div>
+
+        <div id="sf-soql-panel" style="display:none">
+          <div class="field">
+            <label>SOQL query</label>
+            <textarea id="sf-soql" rows="4" placeholder="SELECT Id, Name FROM Contact WHERE ..."></textarea>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="runSfQuery()" id="sf-run-btn">Run Query</button>
+      </div>
+
+      <!-- Discover mode -->
+      <div id="sf-discover-panel" style="display:none">
+        <div class="field" style="max-width:320px">
+          <label for="sf-filter">Filter by name</label>
+          <input type="text" id="sf-filter" placeholder="e.g. opportunity, asset">
+          <p class="help-text">Searching all objects without a filter can exceed 2000 requests</p>
+        </div>
+        <button class="btn btn-primary" onclick="runSfDiscover()" id="sf-discover-btn">Search Objects</button>
+      </div>
+
+      <div id="sf-results"></div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+  // ── State ────────────────────────────────────────────────────────────────────
+
+  let awsCredentials = null;
+  let awsRegion = 'eu-west-1';
+  let hsMode = 'query';
+  let sfMode = 'query';
+
+  // ── Credentials ─────────────────────────────────────────────────────────────
+
+  function loadCredentials() {
+    const raw = document.getElementById('creds-json').value.trim();
+    const statusEl = document.getElementById('creds-status');
+    awsRegion = document.getElementById('region').value.trim() || 'eu-west-1';
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed.AccessKeyId || !parsed.SecretAccessKey) throw new Error('Missing AccessKeyId or SecretAccessKey');
+
+      const expired = parsed.Expiration && new Date(parsed.Expiration) < new Date();
+      if (expired) {
+        awsCredentials = null;
+        statusEl.innerHTML = '<div class="status status-err">Credentials have expired — re-auth and paste fresh credentials</div>';
+        return;
+      }
+
+      awsCredentials = parsed;
+      let msg = '✓ Credentials loaded';
+      if (parsed.Expiration) {
+        const secs = Math.floor((new Date(parsed.Expiration) - new Date()) / 1000);
+        const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+        const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+        msg += ` — expires in ${timeStr}`;
+        statusEl.innerHTML = `<div class="status ${secs < 1800 ? 'status-warn' : 'status-ok'}">${msg}</div>`;
+      } else {
+        statusEl.innerHTML = `<div class="status status-ok">${msg}</div>`;
+      }
+    } catch (e) {
+      awsCredentials = null;
+      statusEl.innerHTML = `<div class="status status-err">Invalid JSON: ${e.message}</div>`;
+    }
+  }
+
+  // ── Tabs ─────────────────────────────────────────────────────────────────────
+
+  function switchTab(id) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0 && id === 'hs') || (i === 1 && id === 'sf'));
+    });
+    document.getElementById('tab-hs').classList.toggle('active', id === 'hs');
+    document.getElementById('tab-sf').classList.toggle('active', id === 'sf');
+  }
+
+  // ── HubSpot ──────────────────────────────────────────────────────────────────
+
+  document.getElementById('hs-customer').addEventListener('input', () => {
+    const val = document.getElementById('hs-customer').value.trim();
+    document.getElementById('hs-secret-path').textContent = val ? `Secret path: ${val}/hubspot` : '';
+  });
+
+  function setHsMode(mode) {
+    hsMode = mode;
+    document.getElementById('hs-mode-query').classList.toggle('active', mode === 'query');
+    document.getElementById('hs-mode-discover').classList.toggle('active', mode === 'discover');
+    document.getElementById('hs-query-panel').style.display = mode === 'query' ? '' : 'none';
+    document.getElementById('hs-discover-panel').style.display = mode === 'discover' ? '' : 'none';
+    document.getElementById('results').innerHTML = '';
+  }
+
+  function onHsQtypeChange() {
+    const qtype = document.getElementById('hs-qtype').value;
+    document.getElementById('hs-search-panel').style.display = qtype === 'search' ? '' : 'none';
+    document.getElementById('hs-limit-row').style.display = qtype === 'shape' ? 'none' : '';
+  }
+
+  async function runHsQuery() {
+    if (!awsCredentials) return alert('Load AWS credentials first.');
+    const customer = document.getElementById('hs-customer').value.trim();
+    if (!customer) return alert('Enter a customer name.');
+
+    const obj = document.getElementById('hs-object').value.trim();
+    const qtype = document.getElementById('hs-qtype').value;
+    if (!obj) return alert('Enter an object type.');
+
+    let filters = [];
+    if (qtype === 'search') {
+      try { filters = JSON.parse(document.getElementById('hs-filters').value); }
+      catch (e) { return alert('Invalid filter JSON: ' + e.message); }
+    }
+
+    const props = document.getElementById('hs-props').value
+      .split(',').map(s => s.trim()).filter(Boolean);
+
+    const btn = document.getElementById('hs-run-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Running…';
+
+    const payload = {
+      credentials: awsCredentials,
+      region: awsRegion,
+      customer,
+      action: 'query',
+      object: obj,
+      queryType: qtype,
+      limit: parseInt(document.getElementById('hs-limit').value) || 100,
+      properties: props,
+      filters,
+    };
+
+    try {
+      const data = await callApi('/api/hubspot', payload);
+      renderResults('results', data, obj);
+    } catch (e) {
+      document.getElementById('results').innerHTML =
+        `<div class="status status-err" style="margin-top:1rem">Error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Run Query';
+    }
+  }
+
+  async function runHsDiscover() {
+    if (!awsCredentials) return alert('Load AWS credentials first.');
+    const customer = document.getElementById('hs-customer').value.trim();
+    if (!customer) return alert('Enter a customer name.');
+    const filter = document.getElementById('hs-filter').value.trim();
+    if (!filter) return alert('Enter a filter term — searching without one can exceed 2000 requests.');
+
+    const btn = document.getElementById('hs-discover-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Searching…';
+
+    try {
+      const data = await callApi('/api/hubspot', {
+        credentials: awsCredentials, region: awsRegion, customer, action: 'discover', filter,
+      });
+      renderResults('results', data, 'objects');
+    } catch (e) {
+      document.getElementById('results').innerHTML =
+        `<div class="status status-err" style="margin-top:1rem">Error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Search Objects';
+    }
+  }
+
+  // ── Salesforce ───────────────────────────────────────────────────────────────
+
+  document.getElementById('sf-customer').addEventListener('input', () => {
+    const val = document.getElementById('sf-customer').value.trim();
+    document.getElementById('sf-secret-path').textContent = val ? `Secret path: ${val}/salesforce` : '';
+  });
+
+  function setSfMode(mode) {
+    sfMode = mode;
+    document.getElementById('sf-mode-query').classList.toggle('active', mode === 'query');
+    document.getElementById('sf-mode-discover').classList.toggle('active', mode === 'discover');
+    document.getElementById('sf-query-panel').style.display = mode === 'query' ? '' : 'none';
+    document.getElementById('sf-discover-panel').style.display = mode === 'discover' ? '' : 'none';
+    document.getElementById('sf-results').innerHTML = '';
+  }
+
+  function onSfQtypeChange() {
+    const qtype = document.getElementById('sf-qtype').value;
+    document.getElementById('sf-soql-panel').style.display = qtype === 'custom' ? '' : 'none';
+    document.getElementById('sf-limit-row').style.display = ['count', 'list', 'shape', 'custom'].includes(qtype) ? 'none' : '';
+  }
+
+  async function runSfQuery() {
+    if (!awsCredentials) return alert('Load AWS credentials first.');
+    const customer = document.getElementById('sf-customer').value.trim();
+    if (!customer) return alert('Enter a customer name.');
+
+    const obj = document.getElementById('sf-object').value.trim();
+    const qtype = document.getElementById('sf-qtype').value;
+    if (!obj && qtype !== 'custom') return alert('Enter a Salesforce object name.');
+
+    const soql = qtype === 'custom' ? document.getElementById('sf-soql').value.trim() : null;
+    if (qtype === 'custom' && !soql) return alert('Enter a SOQL query.');
+
+    const btn = document.getElementById('sf-run-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Running…';
+
+    try {
+      const data = await callApi('/api/salesforce', {
+        credentials: awsCredentials,
+        region: awsRegion,
+        customer,
+        action: 'query',
+        object: obj,
+        queryType: qtype,
+        limit: parseInt(document.getElementById('sf-limit').value) || 10,
+        soql,
+      });
+      renderResults('sf-results', data, obj || 'query');
+    } catch (e) {
+      document.getElementById('sf-results').innerHTML =
+        `<div class="status status-err" style="margin-top:1rem">Error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Run Query';
+    }
+  }
+
+  async function runSfDiscover() {
+    if (!awsCredentials) return alert('Load AWS credentials first.');
+    const customer = document.getElementById('sf-customer').value.trim();
+    if (!customer) return alert('Enter a customer name.');
+    const filter = document.getElementById('sf-filter').value.trim();
+    if (!filter) return alert('Enter a filter term — searching without one can exceed 2000 requests.');
+
+    const btn = document.getElementById('sf-discover-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Searching…';
+
+    try {
+      const data = await callApi('/api/salesforce', {
+        credentials: awsCredentials, region: awsRegion, customer, action: 'discover', filter,
+      });
+      renderResults('sf-results', data, 'objects');
+    } catch (e) {
+      document.getElementById('sf-results').innerHTML =
+        `<div class="status status-err" style="margin-top:1rem">Error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Search Objects';
+    }
+  }
+
+  // ── API + rendering ──────────────────────────────────────────────────────────
+
+  async function callApi(url, payload) {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+    return data;
+  }
+
+  function renderResults(containerId, data, name) {
+    const el = document.getElementById(containerId);
+
+    if (data.type === 'count') {
+      el.innerHTML = `
+        <div class="metric-box" style="margin-top:1rem">
+          <div class="value">${Number(data.total).toLocaleString()}</div>
+          <div class="label">Total records</div>
+        </div>`;
+      return;
+    }
+
+    const rows = data.rows || [];
+    const total = data.total;
+    let summary = `${rows.length.toLocaleString()} record${rows.length !== 1 ? 's' : ''}`;
+    if (total !== undefined && total !== rows.length) {
+      summary = `${Number(total).toLocaleString()} total — ${rows.length.toLocaleString()} returned`;
+    }
+
+    let downloadBtn = '';
+    if (data.excel) {
+      downloadBtn = `<button class="btn btn-outline btn-sm" onclick="downloadExcel('${containerId}')">⬇ Download Excel</button>`;
+      el._excelData = { b64: data.excel, filename: data.filename || `${name}_results.xlsx` };
+    }
+
+    if (!rows.length) {
+      el.innerHTML = `<div class="status status-info" style="margin-top:1rem">No results found.</div>`;
+      return;
+    }
+
+    const cols = Object.keys(rows[0]);
+    const thead = `<tr>${cols.map(c => `<th>${escHtml(c)}</th>`).join('')}</tr>`;
+    const tbody = rows.map(r =>
+      `<tr>${cols.map(c => `<td title="${escHtml(String(r[c] ?? ''))}">${escHtml(String(r[c] ?? ''))}</td>`).join('')}</tr>`
+    ).join('');
+
+    el.innerHTML = `
+      <div class="results-bar" style="margin-top:1.5rem">
+        <span class="label">${summary}</span>
+        ${downloadBtn}
+      </div>
+      <div class="table-wrap">
+        <table><thead>${thead}</thead><tbody>${tbody}</tbody></table>
+      </div>`;
+  }
+
+  function downloadExcel(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el._excelData) return;
+    const { b64, filename } = el._excelData;
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

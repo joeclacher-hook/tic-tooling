@@ -1,0 +1,5 @@
+{
+  "name": "CRM Query Tool",
+  "description": "Query HubSpot and Salesforce records via AWS Secrets Manager",
+  "icon": "🔍"
+}
