@@ -271,61 +271,27 @@
     .dot-red    { background: #f87171; }
     .dot-grey   { background: #94a3b8; }
 
-    /* ── Changed files panel ── */
-    .cmd-block {
-      background: #f4f6f9;
-      border: 1px solid #e4e8ee;
-      border-radius: 6px;
-      overflow: hidden;
-    }
-
-    .cmd-block pre {
-      padding: 0.5rem 0.65rem;
-      font-size: 0.72rem;
-      font-family: 'SF Mono', Monaco, monospace;
-      color: #1a1d23;
-      white-space: pre-wrap;
-      line-height: 1.5;
-    }
-
-    .cmd-block-footer {
-      display: flex;
-      justify-content: flex-end;
-      padding: 0.2rem 0.4rem;
-      border-top: 1px solid #e4e8ee;
-      background: #eef0f5;
-    }
-
-    .copy-btn {
-      border: none;
-      background: none;
-      font-size: 0.72rem;
-      color: #5a6478;
-      cursor: pointer;
-      padding: 0.1rem 0.4rem;
-      border-radius: 3px;
-      font-family: inherit;
-    }
-
-    .copy-btn:hover { background: #dde1ea; color: #1a1d23; }
-
-    textarea {
-      width: 100%;
-      border: 1px solid #d4d9e3;
-      border-radius: 6px;
-      padding: 0.45rem 0.6rem;
-      font-size: 0.75rem;
-      font-family: 'SF Mono', Monaco, monospace;
-      color: #1a1d23;
-      background: #fff;
-      outline: none;
-      resize: vertical;
-      transition: border-color 0.15s;
-    }
-
-    textarea:focus { border-color: #4f46e5; }
-
     .changed-status { font-size: 0.75rem; margin-top: 0.35rem; min-height: 1rem; }
+
+    .helper-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      color: #8b9ab0;
+      margin-top: 0.2rem;
+    }
+
+    .helper-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #8b9ab0;
+      flex-shrink: 0;
+    }
+
+    .helper-dot.up   { background: #4ade80; }
+    .helper-dot.down { background: #f87171; }
   </style>
 </head>
 <body>
@@ -388,20 +354,12 @@
       Changed files only
     </label>
 
-    <div id="changed-files-wrap" style="display:none; flex-direction: column; gap: 0.5rem;">
-      <p class="help-text">Run this in your dug directory and paste the output:</p>
-      <div class="cmd-block">
-        <pre>git status --porcelain; git diff --name-only origin/main...HEAD</pre>
-        <div class="cmd-block-footer">
-          <button class="copy-btn" onclick="copyGitCmd(this)">Copy</button>
-        </div>
-      </div>
-      <div class="field">
-        <textarea id="git-output" rows="5" placeholder="Paste output here…"></textarea>
-      </div>
-      <button class="btn btn-outline btn-xs" onclick="applyChangedFiles()" style="align-self:flex-start">Apply</button>
-      <div class="changed-status" id="changed-status"></div>
+    <div class="helper-badge">
+      <span class="helper-dot" id="helper-dot"></span>
+      <span id="helper-text">git helper checking…</span>
     </div>
+
+    <div class="changed-status" id="changed-status"></div>
   </div>
 
   <!-- Main -->
@@ -475,82 +433,99 @@
     });
   }
 
+  const GIT_HELPER = 'http://localhost:9981';
+  let helperAvailable = false;
+  let changedTypesFilter = null; // null = no filter; { entity: [types] } when changed-only active
+
   function onRunAllChange() {
     const isAll = document.getElementById('run-all').checked;
     document.getElementById('entity-list-wrap').style.display = isAll ? 'none' : '';
     if (isAll) {
       document.getElementById('changed-only').checked = false;
-      document.getElementById('changed-files-wrap').style.display = 'none';
+      changedTypesFilter = null;
+      document.getElementById('changed-status').textContent = '';
     }
   }
 
   function onChangedOnlyChange() {
     const checked = document.getElementById('changed-only').checked;
-    document.getElementById('changed-files-wrap').style.display = checked ? 'flex' : 'none';
-    if (!checked) {
+    if (checked) {
+      fetchChangedFiles();
+    } else {
+      changedTypesFilter = null;
       document.getElementById('changed-status').textContent = '';
       selectAll();
     }
   }
 
-  function copyGitCmd(btn) {
-    const cmd = 'git status --porcelain; git diff --name-only origin/main...HEAD';
-    navigator.clipboard.writeText(cmd).then(() => {
-      btn.textContent = 'Copied!';
-      setTimeout(() => btn.textContent = 'Copy', 2000);
-    });
-  }
-
-  function applyChangedFiles() {
+  async function fetchChangedFiles() {
     const customer  = document.getElementById('customer-id').value.trim();
     const datastore = document.getElementById('datastore').value.trim() || 's3iceberg';
-    const raw       = document.getElementById('git-output').value;
     const statusEl  = document.getElementById('changed-status');
 
-    if (!customer) { alert('Enter a Customer ID first.'); return; }
-    if (!raw.trim()) { statusEl.innerHTML = '<span style="color:#d97706">Paste the git output first.</span>'; return; }
+    if (!customer) {
+      statusEl.innerHTML = '<span style="color:#d97706">Enter a Customer ID first.</span>';
+      return;
+    }
+    if (!helperAvailable) {
+      statusEl.innerHTML = '<span style="color:#d97706">Git helper not running — launch via launch.command first.</span>';
+      return;
+    }
 
-    const prefix = `dug/customers/${customer}/${datastore}/`;
-    const changedPaths = new Set();
+    statusEl.innerHTML = '<span style="color:#8b9ab0">Fetching changed files…</span>';
 
-    for (const line of raw.split('\n')) {
-      const trimmed = line.trimEnd();
-      if (!trimmed) continue;
-      let path;
-      // git status --porcelain: "XY filename" — two status chars then a space
-      if (/^.{2} /.test(trimmed)) {
-        path = trimmed.slice(3).trim();
-        if (path.includes(' -> ')) path = path.split(' -> ').pop();
+    try {
+      const url = `${GIT_HELPER}/?customer=${encodeURIComponent(customer)}&datastore=${encodeURIComponent(datastore)}`;
+      const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      const data = await resp.json();
+
+      const entities = data.entities || [];
+      changedTypesFilter = data.types || {};
+
+      document.querySelectorAll('#entity-list input').forEach(cb => {
+        cb.checked = entities.includes(cb.value);
+      });
+
+      if (!entities.length) {
+        statusEl.innerHTML = '<span style="color:#d97706">No changed SQL files found for this customer/datastore.</span>';
       } else {
-        // git diff --name-only: bare path
-        path = trimmed.trim();
+        const typeCount = Object.values(changedTypesFilter).reduce((n, t) => n + t.length, 0);
+        const typeSuffix = typeCount ? ` (${typeCount} type${typeCount !== 1 ? 's' : ''})` : '';
+        statusEl.innerHTML = `<span style="color:#16a34a">✓ ${entities.length} entit${entities.length !== 1 ? 'ies' : 'y'} selected${typeSuffix}</span>`;
       }
-      changedPaths.add(path);
-    }
-
-    const changedEntities = new Set();
-    for (const path of changedPaths) {
-      if (!path.startsWith(prefix) || !path.endsWith('.sql')) continue;
-      const stem = path.slice(prefix.length, -4);
-      for (const entity of ALL_ENTITIES) {
-        if (stem === entity || stem.startsWith(entity + '_')) {
-          changedEntities.add(entity);
-          break;
-        }
-      }
-    }
-
-    document.querySelectorAll('#entity-list input').forEach(cb => {
-      cb.checked = changedEntities.has(cb.value);
-    });
-
-    if (changedEntities.size === 0) {
-      statusEl.innerHTML = '<span style="color:#d97706">No changed entities found — check Customer ID and datastore match.</span>';
-    } else {
-      const names = [...changedEntities].join(', ');
-      statusEl.innerHTML = `<span style="color:#16a34a">✓ ${changedEntities.size} entit${changedEntities.size === 1 ? 'y' : 'ies'} selected: ${escHtml(names)}</span>`;
+    } catch {
+      statusEl.innerHTML = '<span style="color:#dc2626">Failed to reach git helper.</span>';
     }
   }
+
+  // Re-fetch whenever customer or datastore changes while changed-only is active
+  document.addEventListener('DOMContentLoaded', () => {
+    ['customer-id', 'datastore'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => {
+        if (document.getElementById('changed-only').checked) fetchChangedFiles();
+      });
+    });
+  });
+
+  // ── Git helper status ─────────────────────────────────────────────────────────
+
+  async function checkHelper() {
+    const dot  = document.getElementById('helper-dot');
+    const text = document.getElementById('helper-text');
+    try {
+      await fetch(`${GIT_HELPER}/?customer=__ping__`, { signal: AbortSignal.timeout(2000) });
+      helperAvailable = true;
+      dot.className  = 'helper-dot up';
+      text.textContent = 'git helper running';
+    } catch {
+      helperAvailable = false;
+      dot.className  = 'helper-dot down';
+      text.textContent = 'git helper not running';
+    }
+  }
+
+  setInterval(checkHelper, 5000);
+  checkHelper();
 
   function selectAll()  { document.querySelectorAll('#entity-list input').forEach(cb => cb.checked = true); }
   function selectNone() { document.querySelectorAll('#entity-list input').forEach(cb => cb.checked = false); }
@@ -675,9 +650,15 @@
       setCardSkipped(id);
     });
 
-    // Fetch all definitions in parallel, then create cards
+    // Fetch definitions for complex entities — use changedTypesFilter if active
     const defsResults = await Promise.all(complexEntities.map(async entity => {
       const cfg = ENTITY_CONFIG[entity];
+
+      // If changed-only is active and we know the specific changed types, use them directly
+      if (changedTypesFilter !== null && changedTypesFilter[entity]) {
+        return { entity, types: changedTypesFilter[entity] };
+      }
+
       try {
         const url = `${API_BASE}/v0/customers/${encodeURIComponent(customer)}/${cfg.defsSlug}?datastores=${encodeURIComponent(datastore)}`;
         const resp = await fetch(url, { signal: AbortSignal.timeout(30000) });
