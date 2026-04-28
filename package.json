@@ -1,0 +1,9 @@
+{
+  "name": "tic-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.0.0",
+    "xlsx": "^0.18.5"
+  }
+}
