@@ -1,0 +1,11 @@
+[
+  {
+    "id": "movu5p18ap7w",
+    "name": "Power User Activity Threshold",
+    "description": "Calculates the top 10%, 8%, 5% of user activity every fortnight looking back ~4 months and finds the average to help create power user definitions. Then will craft the SQL to run to update stage2.customer_product_processing_configuration_settings",
+    "files": [
+      "user_activity.md"
+    ],
+    "uploadedAt": "2026-05-07T18:44:53.261Z"
+  }
+]
