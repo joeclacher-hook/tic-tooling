@@ -1,6 +1,6 @@
 # TIC Tooling — Internal Tools Hub
-
-[https://github.com/joeclacher-hook/tic-tooling/](https://tic-tooling.onrender.com/)
+[
+[https://github.com/joeclacher-hook/tic-tooling/](https://tic-tooling.onrender.com/)](https://tic-tooling.onrender.com/)
 
 A Render-hosted web app that acts as a hub for internal tools. Each tool lives in its own folder under `tools/`. The hub index page is auto-generated on every deploy from the `tool.json` files.
 
