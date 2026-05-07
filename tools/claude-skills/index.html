@@ -34,17 +34,39 @@
       background: #fff;
       border: 1px solid #e4e8ee;
       border-radius: 10px;
-      padding: 1.5rem;
       margin-bottom: 2rem;
+      overflow: hidden;
     }
+    .panel-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.25rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.1s;
+    }
+    .panel-toggle:hover { background: #fafbfc; }
     .panel-title {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #8b9ab0;
-      margin-bottom: 1.25rem;
+      color: #1a1d23;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
+    .panel-chevron {
+      color: #8b9ab0;
+      transition: transform 0.2s;
+      font-style: normal;
+    }
+    .upload-panel.open .panel-chevron { transform: rotate(90deg); }
+    .panel-body {
+      display: none;
+      padding: 0 1.5rem 1.5rem;
+      border-top: 1px solid #f0f2f6;
+    }
+    .upload-panel.open .panel-body { display: block; }
 
     .drop-zone {
       border: 2px dashed #d4d9e3;
@@ -232,30 +254,34 @@
 <div class="page">
 
   <!-- Upload -->
-  <div class="upload-panel">
-    <div class="panel-title">Share a skill</div>
-
-    <div class="drop-zone" id="drop-zone">
-      <input type="file" id="file-input" multiple accept=".md,.txt,.yaml,.yml" onchange="onFilePick(this)">
-      <div class="drop-zone-icon">📂</div>
-      <div class="drop-zone-label"><strong>Click to browse</strong> or drag files here</div>
-      <div class="drop-zone-sub">.md files — individual files or a whole folder</div>
+  <div class="upload-panel" id="upload-panel">
+    <div class="panel-toggle" onclick="toggleUploadPanel()">
+      <span class="panel-title">+ Share a skill</span>
+      <i class="panel-chevron">›</i>
     </div>
-    <div id="file-list" class="file-list" style="display:none"></div>
+    <div class="panel-body">
+      <div class="drop-zone" id="drop-zone" style="margin-top:1rem">
+        <input type="file" id="file-input" multiple accept=".md,.txt,.yaml,.yml" onchange="onFilePick(this)">
+        <div class="drop-zone-icon">📂</div>
+        <div class="drop-zone-label"><strong>Click to browse</strong> or drag files here</div>
+        <div class="drop-zone-sub">.md files — individual files or a whole folder</div>
+      </div>
+      <div id="file-list" class="file-list" style="display:none"></div>
 
-    <div class="form-row" style="margin-top:1rem">
-      <div class="field">
-        <label for="skill-name">Skill name <span style="color:#991b1b">*</span></label>
-        <input type="text" id="skill-name" placeholder="e.g. UI Component Builder">
+      <div class="form-row" style="margin-top:1rem">
+        <div class="field">
+          <label for="skill-name">Skill name <span style="color:#991b1b">*</span></label>
+          <input type="text" id="skill-name" placeholder="e.g. UI Component Builder">
+        </div>
+        <div class="field">
+          <label for="skill-desc">Description</label>
+          <input type="text" id="skill-desc" placeholder="What does this skill do?">
+        </div>
       </div>
-      <div class="field">
-        <label for="skill-desc">Description</label>
-        <input type="text" id="skill-desc" placeholder="What does this skill do?">
-      </div>
+
+      <button class="btn btn-primary" id="upload-btn" onclick="uploadSkill()">Upload Skill</button>
+      <div id="upload-status"></div>
     </div>
-
-    <button class="btn btn-primary" id="upload-btn" onclick="uploadSkill()">Upload Skill</button>
-    <div id="upload-status"></div>
   </div>
 
   <!-- Skills list -->
@@ -272,6 +298,10 @@
 
 <script>
   let pickedFiles = [];
+
+  function toggleUploadPanel() {
+    document.getElementById('upload-panel').classList.toggle('open');
+  }
 
   // ── Folder support ─────────────────────────────────────────────────────────
   const dropZone = document.getElementById('drop-zone');
@@ -351,6 +381,10 @@
       document.getElementById('skill-desc').value = '';
       setPickedFiles([]);
       document.getElementById('file-input').value = '';
+      setTimeout(() => {
+        document.getElementById('upload-panel').classList.remove('open');
+        statusEl.innerHTML = '';
+      }, 1500);
       loadSkills();
     } catch (e) {
       statusEl.innerHTML = `<div class="status status-err">Upload failed: ${escHtml(e.message)}</div>`;
