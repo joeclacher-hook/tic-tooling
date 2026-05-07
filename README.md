@@ -86,18 +86,3 @@ The tool will be live at `https://tic-tooling.onrender.com/tools/my-tool/`.
 
 Render auto-deploys on every push to `main`.
 
-## AWS credentials (for tools that use AWS Secrets Manager)
-
-Tools ask users to paste temporary AWS SSO credentials at runtime. If your tool needs AWS access, prompt the user to run:
-
-```bash
-aws sso login --profile hook-production-tic
-aws configure export-credentials --profile hook-production-tic
-```
-
-Then pass the JSON output in the request body and create a `SecretsManagerClient` from those credentials. Do not store AWS credentials or secrets in the repo.
-
-## Existing tools
-
-- **crm-queries** — Query HubSpot and Salesforce records via AWS Secrets Manager. Uses `api/hubspot.js` and `api/salesforce.js`.
-- **integration-secrets** — Browse raw integration secrets stored in AWS Secrets Manager.
