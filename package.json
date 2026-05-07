@@ -2,7 +2,11 @@
   "name": "tic-tooling",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
+    "express": "^4.18.0",
     "@aws-sdk/client-secrets-manager": "^3.0.0",
     "xlsx": "^0.18.5"
   }
