@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const multer = require('multer');
 const hubspot = require('./api/hubspot');
 const salesforce = require('./api/salesforce');
 const integrationSecrets = require('./api/integration-secrets');
@@ -28,6 +29,155 @@ app.options('/api/salesforce', netlifyAdapter(salesforce.handler));
 app.post('/api/salesforce', netlifyAdapter(salesforce.handler));
 app.options('/api/integration-secrets', netlifyAdapter(integrationSecrets.handler));
 app.post('/api/integration-secrets', netlifyAdapter(integrationSecrets.handler));
+
+// ── Claude Skills ─────────────────────────────────────────────────────────────
+const skillsUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+const GH_TOKEN  = process.env.GITHUB_TOKEN;
+const GH_REPO   = process.env.GITHUB_REPO   || 'joeclacher-hook/tic-tooling';
+const GH_BRANCH = process.env.GITHUB_BRANCH || 'main';
+const SKILLS_BASE = 'tools/claude-skills/skills';
+const MANIFEST_PATH = `${SKILLS_BASE}/manifest.json`;
+const GH_HEADERS = () => ({
+  Authorization: `Bearer ${GH_TOKEN}`,
+  Accept: 'application/vnd.github.v3+json',
+  'Content-Type': 'application/json',
+  'User-Agent': 'tic-tooling',
+});
+
+async function ghGet(filePath) {
+  const r = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${filePath}?ref=${GH_BRANCH}`, { headers: GH_HEADERS() });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`GitHub GET ${filePath}: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+async function ghPut(filePath, content, message, sha) {
+  const body = {
+    message,
+    content: Buffer.isBuffer(content) ? content.toString('base64') : Buffer.from(content).toString('base64'),
+    branch: GH_BRANCH,
+    ...(sha ? { sha } : {}),
+  };
+  const r = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${filePath}`, {
+    method: 'PUT', headers: GH_HEADERS(), body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`GitHub PUT ${filePath}: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+async function ghDelete(filePath, message, sha) {
+  const r = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${filePath}`, {
+    method: 'DELETE',
+    headers: GH_HEADERS(),
+    body: JSON.stringify({ message, sha, branch: GH_BRANCH }),
+  });
+  if (!r.ok && r.status !== 404) throw new Error(`GitHub DELETE ${filePath}: ${r.status} ${await r.text()}`);
+}
+
+async function readManifest() {
+  const data = await ghGet(MANIFEST_PATH);
+  if (!data) return { skills: [], sha: null };
+  return { skills: JSON.parse(Buffer.from(data.content, 'base64').toString('utf8')), sha: data.sha };
+}
+
+function sanitizeName(name) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+// Upload
+app.post('/api/skills/upload', skillsUpload.array('files'), async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const { name, description = '' } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+    if (!req.files?.length) return res.status(400).json({ error: 'at least one file is required' });
+
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const filenames = [];
+
+    for (const file of req.files) {
+      const safe = sanitizeName(file.originalname);
+      await ghPut(`${SKILLS_BASE}/${id}/${safe}`, file.buffer, `feat: add skill "${name.trim()}" (${safe})`);
+      filenames.push(safe);
+    }
+
+    const { skills, sha } = await readManifest();
+    skills.push({ id, name: name.trim(), description: description.trim(), files: filenames, uploadedAt: new Date().toISOString() });
+    await ghPut(MANIFEST_PATH, JSON.stringify(skills, null, 2), `chore: register skill "${name.trim()}"`, sha);
+
+    res.json({ ok: true, id, filenames });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// List
+app.get('/api/skills/list', async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const { skills } = await readManifest();
+    res.json({ skills });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get file content
+app.get('/api/skills/file', async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const id = sanitizeName(String(req.query.id || ''));
+    const filename = sanitizeName(String(req.query.filename || ''));
+    if (!id || !filename) return res.status(400).json({ error: 'id and filename required' });
+    const data = await ghGet(`${SKILLS_BASE}/${id}/${filename}`);
+    if (!data) return res.status(404).json({ error: 'File not found' });
+    res.json({ content: Buffer.from(data.content, 'base64').toString('utf8'), filename });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Edit name/description
+app.patch('/api/skills/:id', async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const id = sanitizeName(req.params.id);
+    const { name, description } = req.body;
+    const { skills, sha } = await readManifest();
+    const skill = skills.find(s => s.id === id);
+    if (!skill) return res.status(404).json({ error: 'Skill not found' });
+    if (name !== undefined) skill.name = name.trim();
+    if (description !== undefined) skill.description = description.trim();
+    await ghPut(MANIFEST_PATH, JSON.stringify(skills, null, 2), `chore: update skill "${skill.name}"`, sha);
+    res.json({ ok: true, skill });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete
+app.delete('/api/skills/:id', async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const id = sanitizeName(req.params.id);
+    const { skills, sha } = await readManifest();
+    const idx = skills.findIndex(s => s.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Skill not found' });
+    const [skill] = skills.splice(idx, 1);
+
+    for (const filename of skill.files) {
+      const fileData = await ghGet(`${SKILLS_BASE}/${id}/${filename}`);
+      if (fileData) await ghDelete(`${SKILLS_BASE}/${id}/${filename}`, `chore: remove skill "${skill.name}"`, fileData.sha);
+    }
+
+    const refreshed = await ghGet(MANIFEST_PATH);
+    await ghPut(MANIFEST_PATH, JSON.stringify(skills, null, 2), `chore: remove skill "${skill.name}"`, refreshed?.sha);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));

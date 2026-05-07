@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Skills</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1d23;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1d23;
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header a { color: #8b9ab0; text-decoration: none; font-size: 0.85rem; }
+    header a:hover { color: #fff; }
+    header .sep { color: #3d4555; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+
+    .page { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* Upload panel */
+    .upload-panel {
+      background: #fff;
+      border: 1px solid #e4e8ee;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .panel-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8b9ab0;
+      margin-bottom: 1.25rem;
+    }
+
+    .drop-zone {
+      border: 2px dashed #d4d9e3;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #4f46e5; background: #f5f4ff; }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .drop-zone-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .drop-zone-label { font-size: 0.9rem; color: #5a6478; }
+    .drop-zone-label strong { color: #4f46e5; }
+    .drop-zone-sub { font-size: 0.78rem; color: #8b9ab0; margin-top: 0.3rem; }
+    .drop-zone.has-files { border-color: #4f46e5; background: #f5f4ff; }
+    .file-list { font-size: 0.8rem; color: #3d4555; margin-top: 0.5rem; }
+    .file-list span { display: inline-block; background: #eef0f5; border-radius: 4px; padding: 0.15rem 0.5rem; margin: 0.15rem; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .field { margin-bottom: 0; }
+    label { display: block; font-size: 0.82rem; font-weight: 500; color: #3d4555; margin-bottom: 0.3rem; }
+    input[type="text"], textarea {
+      width: 100%;
+      border: 1px solid #d4d9e3;
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #1a1d23;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus, textarea:focus { border-color: #4f46e5; }
+    textarea { resize: vertical; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem 1.1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4338ca; }
+    .btn-outline { background: #fff; border: 1px solid #d4d9e3; color: #3d4555; }
+    .btn-outline:hover:not(:disabled) { border-color: #4f46e5; color: #4f46e5; }
+    .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
+    .btn-danger { background: #fff; border: 1px solid #fecaca; color: #991b1b; }
+    .btn-danger:hover:not(:disabled) { background: #fef2f2; }
+
+    .status {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: 6px;
+    }
+    .status-ok   { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status-err  { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+    /* Skills grid */
+    .skills-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .skills-count { font-size: 0.85rem; color: #5a6478; }
+
+    .skills-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .skill-card {
+      background: #fff;
+      border: 1px solid #e4e8ee;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .skill-card-header {
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .skill-meta { flex: 1; min-width: 0; }
+    .skill-name { font-size: 0.95rem; font-weight: 600; color: #1a1d23; margin-bottom: 0.25rem; }
+    .skill-desc { font-size: 0.82rem; color: #5a6478; line-height: 1.5; }
+    .skill-date { font-size: 0.75rem; color: #8b9ab0; margin-top: 0.4rem; }
+    .skill-actions { display: flex; gap: 0.4rem; align-items: flex-start; flex-shrink: 0; }
+
+    .skill-files {
+      border-top: 1px solid #f0f2f6;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .file-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #f4f6f9;
+      border: 1px solid #e4e8ee;
+      border-radius: 20px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.78rem;
+      color: #3d4555;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+    .file-chip button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #8b9ab0;
+      padding: 0;
+      font-size: 0.72rem;
+      transition: color 0.1s;
+    }
+    .file-chip button:hover { color: #4f46e5; }
+
+    /* Content viewer */
+    .content-viewer {
+      border-top: 1px solid #f0f2f6;
+      background: #1a1d23;
+      padding: 1rem 1.25rem;
+    }
+    .content-viewer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .content-viewer-filename { font-size: 0.78rem; color: #8b9ab0; font-family: 'SF Mono', Monaco, monospace; }
+    .content-viewer pre {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.78rem;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #8b9ab0;
+      font-size: 0.9rem;
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #d4d9e3;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/">← Hub</a>
+  <span class="sep">/</span>
+  <h1>🧠 Claude Skills</h1>
+</header>
+
+<div class="page">
+
+  <!-- Upload -->
+  <div class="upload-panel">
+    <div class="panel-title">Share a skill</div>
+
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" multiple accept=".md,.txt,.yaml,.yml" onchange="onFilePick(this)">
+      <div class="drop-zone-icon">📂</div>
+      <div class="drop-zone-label"><strong>Click to browse</strong> or drag files here</div>
+      <div class="drop-zone-sub">.md files — individual files or a whole folder</div>
+    </div>
+    <div id="file-list" class="file-list" style="display:none"></div>
+
+    <div class="form-row" style="margin-top:1rem">
+      <div class="field">
+        <label for="skill-name">Skill name <span style="color:#991b1b">*</span></label>
+        <input type="text" id="skill-name" placeholder="e.g. UI Component Builder">
+      </div>
+      <div class="field">
+        <label for="skill-desc">Description</label>
+        <input type="text" id="skill-desc" placeholder="What does this skill do?">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="upload-btn" onclick="uploadSkill()">Upload Skill</button>
+    <div id="upload-status"></div>
+  </div>
+
+  <!-- Skills list -->
+  <div class="skills-header">
+    <div class="skills-count" id="skills-count">Loading skills…</div>
+    <button class="btn btn-outline btn-sm" onclick="loadSkills()">↻ Refresh</button>
+  </div>
+
+  <div id="skills-grid" class="skills-grid">
+    <div class="empty-state"><div class="spinner"></div></div>
+  </div>
+
+</div>
+
+<script>
+  let pickedFiles = [];
+
+  // ── Folder support ─────────────────────────────────────────────────────────
+  const dropZone = document.getElementById('drop-zone');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    handleEntries(e.dataTransfer.items);
+  });
+
+  async function handleEntries(items) {
+    const files = [];
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry?.();
+      if (!entry) continue;
+      await collectFiles(entry, files);
+    }
+    if (files.length) setPickedFiles(files);
+  }
+
+  async function collectFiles(entry, out) {
+    if (entry.isFile) {
+      out.push(await new Promise(res => entry.file(res)));
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const entries = await new Promise(res => reader.readEntries(res));
+      for (const e of entries) await collectFiles(e, out);
+    }
+  }
+
+  function onFilePick(input) {
+    setPickedFiles(Array.from(input.files));
+  }
+
+  function setPickedFiles(files) {
+    pickedFiles = files;
+    const listEl = document.getElementById('file-list');
+    const dz = document.getElementById('drop-zone');
+    if (!files.length) {
+      listEl.style.display = 'none';
+      dz.classList.remove('has-files');
+      return;
+    }
+    dz.classList.add('has-files');
+    listEl.style.display = '';
+    listEl.innerHTML = files.map(f => `<span>${escHtml(f.name)}</span>`).join('');
+  }
+
+  // ── Upload ─────────────────────────────────────────────────────────────────
+  async function uploadSkill() {
+    const name = document.getElementById('skill-name').value.trim();
+    const desc = document.getElementById('skill-desc').value.trim();
+    const statusEl = document.getElementById('upload-status');
+
+    if (!name) { statusEl.innerHTML = '<div class="status status-err">Skill name is required.</div>'; return; }
+    if (!pickedFiles.length) { statusEl.innerHTML = '<div class="status status-err">Select at least one file.</div>'; return; }
+
+    const btn = document.getElementById('upload-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Uploading…';
+    statusEl.innerHTML = '';
+
+    const form = new FormData();
+    form.append('name', name);
+    form.append('description', desc);
+    for (const f of pickedFiles) form.append('files', f, f.name);
+
+    try {
+      const resp = await fetch('/api/skills/upload', { method: 'POST', body: form });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+
+      statusEl.innerHTML = `<div class="status status-ok">Skill uploaded successfully — committed to GitHub.</div>`;
+      document.getElementById('skill-name').value = '';
+      document.getElementById('skill-desc').value = '';
+      setPickedFiles([]);
+      document.getElementById('file-input').value = '';
+      loadSkills();
+    } catch (e) {
+      statusEl.innerHTML = `<div class="status status-err">Upload failed: ${escHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Upload Skill';
+    }
+  }
+
+  // ── Load skills ────────────────────────────────────────────────────────────
+  async function loadSkills() {
+    const grid = document.getElementById('skills-grid');
+    const countEl = document.getElementById('skills-count');
+    grid.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+
+    try {
+      const resp = await fetch('/api/skills/list');
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+
+      const skills = data.skills.slice().reverse();
+      countEl.textContent = `${skills.length} skill${skills.length !== 1 ? 's' : ''}`;
+
+      if (!skills.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="icon">🧠</div>No skills uploaded yet. Be the first!</div>';
+        return;
+      }
+
+      grid.innerHTML = skills.map(s => renderCard(s)).join('');
+    } catch (e) {
+      countEl.textContent = 'Failed to load';
+      grid.innerHTML = `<div class="status status-err">Could not load skills: ${escHtml(e.message)}</div>`;
+    }
+  }
+
+  function renderCard(skill) {
+    const date = new Date(skill.uploadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const chips = skill.files.map(f => `
+      <span class="file-chip">
+        ${escHtml(f)}
+        <button onclick="viewFile('${escAttr(skill.id)}', '${escAttr(f)}', this)" title="View">👁</button>
+        <button onclick="copyFile('${escAttr(skill.id)}', '${escAttr(f)}', this)" title="Copy">📋</button>
+        <button onclick="downloadFile('${escAttr(skill.id)}', '${escAttr(f)}')" title="Download">⬇</button>
+      </span>`).join('');
+
+    return `
+      <div class="skill-card" id="card-${escAttr(skill.id)}">
+        <div class="skill-card-header">
+          <div class="skill-meta">
+            <div class="skill-name">${escHtml(skill.name)}</div>
+            ${skill.description ? `<div class="skill-desc">${escHtml(skill.description)}</div>` : ''}
+            <div class="skill-date">Uploaded ${date}</div>
+          </div>
+          <div class="skill-actions">
+            <button class="btn btn-outline btn-sm" onclick="startEdit('${escAttr(skill.id)}', '${escAttr(skill.name)}', '${escAttr(skill.description)}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSkill('${escAttr(skill.id)}', '${escAttr(skill.name)}', this)">Delete</button>
+          </div>
+        </div>
+        <div class="skill-files">${chips}</div>
+        <div class="content-viewer" id="viewer-${escAttr(skill.id)}" style="display:none"></div>
+      </div>`;
+  }
+
+  // ── View / copy / download ────────────────────────────────────────────────
+  async function getFileContent(skillId, filename) {
+    const resp = await fetch(`/api/skills/file?id=${encodeURIComponent(skillId)}&filename=${encodeURIComponent(filename)}`);
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error);
+    return data.content;
+  }
+
+  async function viewFile(skillId, filename, btn) {
+    const viewer = document.getElementById(`viewer-${skillId}`);
+    if (viewer.dataset.showing === `${skillId}/${filename}`) {
+      viewer.style.display = 'none';
+      viewer.dataset.showing = '';
+      return;
+    }
+    btn.textContent = '⏳';
+    try {
+      const content = await getFileContent(skillId, filename);
+      viewer.style.display = '';
+      viewer.dataset.showing = `${skillId}/${filename}`;
+      viewer.innerHTML = `
+        <div class="content-viewer-header">
+          <span class="content-viewer-filename">${escHtml(filename)}</span>
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.content-viewer').style.display='none'">Close</button>
+        </div>
+        <pre>${escHtml(content)}</pre>`;
+      btn.textContent = '👁';
+    } catch (e) {
+      alert(`Failed to load file: ${e.message}`);
+      btn.textContent = '👁';
+    }
+  }
+
+  async function copyFile(skillId, filename, btn) {
+    btn.textContent = '⏳';
+    try {
+      const content = await getFileContent(skillId, filename);
+      await navigator.clipboard.writeText(content);
+      btn.textContent = '✅';
+      setTimeout(() => btn.textContent = '📋', 1500);
+    } catch (e) {
+      alert(`Failed to copy: ${e.message}`);
+      btn.textContent = '📋';
+    }
+  }
+
+  async function downloadFile(skillId, filename) {
+    try {
+      const content = await getFileContent(skillId, filename);
+      const blob = new Blob([content], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      alert(`Failed to download: ${e.message}`);
+    }
+  }
+
+  // ── Edit ──────────────────────────────────────────────────────────────────
+  function startEdit(skillId, currentName, currentDesc) {
+    const card = document.getElementById(`card-${skillId}`);
+    const nameEl = card.querySelector('.skill-name');
+    const descEl = card.querySelector('.skill-desc');
+
+    nameEl.innerHTML = `<input type="text" class="edit-input" value="${escAttr(currentName)}" style="font-size:0.95rem;font-weight:600;width:100%;border:1px solid #d4d9e3;border-radius:4px;padding:0.25rem 0.5rem;outline:none;">`;
+    descEl.innerHTML = `<input type="text" class="edit-input" value="${escAttr(currentDesc)}" placeholder="Description" style="font-size:0.82rem;width:100%;border:1px solid #d4d9e3;border-radius:4px;padding:0.25rem 0.5rem;outline:none;color:#5a6478;">`;
+
+    const actionsEl = card.querySelector('.skill-actions');
+    actionsEl.innerHTML = `
+      <button class="btn btn-primary btn-sm" onclick="saveEdit('${escAttr(skillId)}', this)">Save</button>
+      <button class="btn btn-outline btn-sm" onclick="loadSkills()">Cancel</button>`;
+  }
+
+  async function saveEdit(skillId, btn) {
+    const card = document.getElementById(`card-${skillId}`);
+    const inputs = card.querySelectorAll('.edit-input');
+    const name = inputs[0].value.trim();
+    const description = inputs[1].value.trim();
+    if (!name) { alert('Skill name cannot be empty.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const resp = await fetch(`/api/skills/${encodeURIComponent(skillId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error);
+      loadSkills();
+    } catch (e) {
+      alert(`Save failed: ${e.message}`);
+      btn.disabled = false;
+      btn.textContent = 'Save';
+    }
+  }
+
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  async function deleteSkill(skillId, skillName, btn) {
+    if (!confirm(`Delete "${skillName}"? This cannot be undone.`)) return;
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const resp = await fetch(`/api/skills/${encodeURIComponent(skillId)}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error);
+      document.getElementById(`card-${skillId}`)?.remove();
+      const remaining = document.querySelectorAll('.skill-card').length;
+      document.getElementById('skills-count').textContent = `${remaining} skill${remaining !== 1 ? 's' : ''}`;
+      if (!remaining) loadSkills();
+    } catch (e) {
+      alert(`Delete failed: ${e.message}`);
+      btn.disabled = false;
+      btn.textContent = 'Delete';
+    }
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function escAttr(s) {
+    return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  loadSkills();
+</script>
+</body>
+</html>
