@@ -437,7 +437,7 @@
       try {
         data = JSON.parse(text);
       } catch (_) {
-        throw new Error(`Function not reachable (HTTP ${resp.status}). Check Netlify → Functions tab.`);
+        throw new Error(`API not reachable (HTTP ${resp.status}). Check the Render dashboard to confirm the service is running.`);
       }
       if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
 

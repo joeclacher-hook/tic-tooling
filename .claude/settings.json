@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Bash(git -C /Users/joeclacher/Documents/tic-tooling remote -v)",
+      "Bash(rm -rf /Users/joeclacher/Documents/tic-tooling && git clone https://github.com/joeclacher-hook/tic-tooling /Users/joeclacher/Documents/tic-tooling)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node scripts/generate-hub.js)"
+    ],
+    "additionalDirectories": [
+      "/Users/joeclacher/Documents/tic-tooling"
+    ]
+  }
+}
