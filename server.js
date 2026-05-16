@@ -3,7 +3,7 @@ const path = require('path');
 const multer = require('multer');
 const session = require('express-session');
 const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const GoogleStrategy = require('passport-google-oidc');
 const hubspot = require('./api/hubspot');
 const salesforce = require('./api/salesforce');
 const integrationSecrets = require('./api/integration-secrets');
@@ -113,10 +113,8 @@ passport.use(new GoogleStrategy(
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback',
-    pkce: true,
-    state: true,
   },
-  (_accessToken, _refreshToken, profile, done) => {
+  (_issuer, profile, done) => {
     const email = profile.emails?.[0]?.value || '';
     if (!email.endsWith('@hook.co')) {
       return done(null, false, { message: 'unauthorized' });
