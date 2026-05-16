@@ -1,12 +1,172 @@
 const express = require('express');
 const path = require('path');
 const multer = require('multer');
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const hubspot = require('./api/hubspot');
 const salesforce = require('./api/salesforce');
 const integrationSecrets = require('./api/integration-secrets');
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function loginPage(errorMsg) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — TIC Tooling</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #111;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+      padding: 48px 40px 40px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+    .logo { font-size: 2rem; margin-bottom: 12px; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 6px; }
+    p { color: #666; font-size: 0.9rem; margin-bottom: 32px; }
+    .error {
+      background: #fff0f0;
+      border: 1px solid #fcc;
+      color: #c00;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      margin-bottom: 20px;
+    }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      background: #fff;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      color: #111;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .btn:hover { background: #f9f9f9; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .btn svg { flex-shrink: 0; }
+    .footer { margin-top: 28px; font-size: 0.8rem; color: #aaa; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🔧</div>
+    <h1>TIC Tooling</h1>
+    <p>Sign in with your Hook Google account to continue.</p>
+    ${errorMsg ? `<div class="error">${errorMsg}</div>` : ''}
+    <a class="btn" href="/auth/google">
+      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 6.294C4.672 4.169 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </a>
+    <div class="footer">Access restricted to @hook.co accounts</div>
+  </div>
+</body>
+</html>`;
+}
+
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-prod',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  },
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(new GoogleStrategy(
+  {
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback',
+  },
+  (_accessToken, _refreshToken, profile, done) => {
+    const email = profile.emails?.[0]?.value || '';
+    if (!email.endsWith('@hook.co')) {
+      return done(null, false, { message: 'unauthorized' });
+    }
+    return done(null, {
+      id: profile.id,
+      email,
+      name: profile.displayName,
+      photo: profile.photos?.[0]?.value,
+    });
+  }
+));
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
+
+app.get('/login', (req, res) => {
+  if (req.isAuthenticated()) return res.redirect('/');
+  const error = req.query.error === 'unauthorized'
+    ? 'Access restricted to @hook.co accounts.'
+    : null;
+  res.send(loginPage(error));
+});
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login?error=unauthorized' }),
+  (_req, res) => res.redirect('/')
+);
+
+app.get('/auth/logout', (req, res) => {
+  req.logout(() => res.redirect('/login'));
+});
+
+app.get('/auth/me', (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not authenticated' });
+  res.json({ user: req.user });
+});
+
+function requireAuth(req, res, next) {
+  if (req.isAuthenticated()) return next();
+  if (req.headers.accept?.includes('application/json') || req.xhr) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  res.redirect('/login');
+}
+
+// All routes below this line require auth
+app.use(requireAuth);
 
 // Serve static files (the hub + all tools)
 app.use(express.static(path.join(__dirname)));
