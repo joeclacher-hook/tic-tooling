@@ -766,7 +766,12 @@
     }
 
     if (!rows.length) {
-      el.innerHTML = `<div class="status status-info" style="margin-top:1rem">No results found.</div>`;
+      const zeroSummary = total !== undefined ? `${Number(total).toLocaleString()} records` : '0 records';
+      el.innerHTML = `
+        <div class="results-bar" style="margin-top:1.5rem">
+          <span class="label">${zeroSummary}</span>
+        </div>
+        <div class="status status-info">Query ran successfully — no records matched.</div>`;
       return;
     }
 
