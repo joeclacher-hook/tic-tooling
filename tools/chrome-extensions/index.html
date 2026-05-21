@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrome Extensions</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1d23;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1d23;
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header a { color: #8b9ab0; text-decoration: none; font-size: 0.85rem; }
+    header a:hover { color: #fff; }
+    header .sep { color: #3d4555; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+
+    .page { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* Collapsible panels */
+    .panel {
+      background: #fff;
+      border: 1px solid #e4e8ee;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+    .panel-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.25rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.1s;
+    }
+    .panel-toggle:hover { background: #fafbfc; }
+    .panel-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1a1d23;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .panel-chevron {
+      color: #8b9ab0;
+      transition: transform 0.2s;
+      font-style: normal;
+    }
+    .panel.open .panel-chevron { transform: rotate(90deg); }
+    .panel-body {
+      display: none;
+      padding: 0 1.5rem 1.5rem;
+      border-top: 1px solid #f0f2f6;
+    }
+    .panel.open .panel-body { display: block; }
+
+    /* Install guide */
+    .guide-steps { counter-reset: steps; padding-top: 1.25rem; }
+    .guide-step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.1rem;
+      align-items: flex-start;
+    }
+    .guide-step:last-child { margin-bottom: 0; }
+    .step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      background: #1a1d23;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+    .step-content { flex: 1; }
+    .step-title { font-size: 0.88rem; font-weight: 600; color: #1a1d23; margin-bottom: 0.2rem; }
+    .step-desc { font-size: 0.82rem; color: #5a6478; line-height: 1.55; }
+    .step-desc code {
+      font-family: 'SF Mono', Monaco, monospace;
+      background: #f0f2f6;
+      border-radius: 3px;
+      padding: 0.1em 0.4em;
+      font-size: 0.85em;
+      color: #3d4555;
+    }
+    .guide-note {
+      margin-top: 1.25rem;
+      padding: 0.75rem 1rem;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      color: #92400e;
+      line-height: 1.55;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #d4d9e3;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #4f46e5; background: #f5f4ff; }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .drop-zone-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .drop-zone-label { font-size: 0.9rem; color: #5a6478; }
+    .drop-zone-label strong { color: #4f46e5; }
+    .drop-zone-sub { font-size: 0.78rem; color: #8b9ab0; margin-top: 0.3rem; }
+    .drop-zone.has-file { border-color: #4f46e5; background: #f5f4ff; }
+    .picked-file { font-size: 0.82rem; color: #3d4555; margin-top: 0.5rem; }
+    .picked-file span { display: inline-block; background: #eef0f5; border-radius: 4px; padding: 0.15rem 0.5rem; }
+
+    /* Form fields */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .form-row-full { margin-bottom: 1rem; }
+    .field { }
+    label { display: block; font-size: 0.82rem; font-weight: 500; color: #3d4555; margin-bottom: 0.3rem; }
+    input[type="text"], textarea, select {
+      width: 100%;
+      border: 1px solid #d4d9e3;
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #1a1d23;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus { border-color: #4f46e5; }
+    textarea { resize: vertical; }
+    select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b9ab0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.7rem center; padding-right: 2rem; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem 1.1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4338ca; }
+    .btn-outline { background: #fff; border: 1px solid #d4d9e3; color: #3d4555; }
+    .btn-outline:hover:not(:disabled) { border-color: #4f46e5; color: #4f46e5; }
+    .btn-download { background: #fff; border: 1px solid #d4d9e3; color: #3d4555; }
+    .btn-download:hover:not(:disabled) { border-color: #059669; color: #059669; background: #f0fdf4; }
+    .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
+    .btn-danger { background: #fff; border: 1px solid #fecaca; color: #991b1b; }
+    .btn-danger:hover:not(:disabled) { background: #fef2f2; }
+
+    /* Status messages */
+    .status {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: 6px;
+    }
+    .status-ok   { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status-err  { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+    /* Extensions list */
+    .list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .list-count { font-size: 0.85rem; color: #5a6478; }
+
+    .ext-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .ext-card {
+      background: #fff;
+      border: 1px solid #e4e8ee;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .ext-card-header {
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .ext-meta { flex: 1; min-width: 0; }
+    .ext-name { font-size: 0.95rem; font-weight: 600; color: #1a1d23; margin-bottom: 0.3rem; }
+    .ext-description { font-size: 0.82rem; color: #5a6478; line-height: 1.5; margin-bottom: 0.4rem; }
+    .ext-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.72rem;
+      font-weight: 500;
+      border-radius: 20px;
+      padding: 0.2rem 0.6rem;
+    }
+    .badge-interaction { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .ext-date { font-size: 0.75rem; color: #8b9ab0; }
+    .ext-actions { display: flex; gap: 0.4rem; align-items: flex-start; flex-shrink: 0; }
+
+    .ext-details {
+      border-top: 1px solid #f0f2f6;
+      padding: 0.85rem 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem 1.5rem;
+    }
+    .ext-detail-label {
+      font-size: 0.73rem;
+      font-weight: 600;
+      color: #8b9ab0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+    .ext-detail-value {
+      font-size: 0.82rem;
+      color: #3d4555;
+      line-height: 1.55;
+    }
+    .ext-detail-full { grid-column: 1 / -1; }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #8b9ab0;
+      font-size: 0.9rem;
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #d4d9e3;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/">← Hub</a>
+  <span class="sep">/</span>
+  <h1>🧩 Chrome Extensions</h1>
+</header>
+
+<div class="page">
+
+  <!-- Install Guide -->
+  <div class="panel open" id="install-panel">
+    <div class="panel-toggle" onclick="togglePanel('install-panel')">
+      <span class="panel-title">📖 How to install a Chrome extension</span>
+      <i class="panel-chevron">›</i>
+    </div>
+    <div class="panel-body">
+      <div class="guide-steps">
+        <div class="guide-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Open Chrome Extensions</div>
+            <div class="step-desc">Navigate to <code>chrome://extensions</code> in your browser address bar.</div>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Enable Developer Mode</div>
+            <div class="step-desc">Toggle <strong>Developer Mode</strong> on in the top-right corner of the extensions page.</div>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Click "Load unpacked"</div>
+            <div class="step-desc">Press the <strong>Load unpacked</strong> button that appears once Developer Mode is on.</div>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Select the unzipped folder</div>
+            <div class="step-desc">Download the ZIP from this page, unzip it, then select the unzipped folder. Make sure to save it somewhere permanent — not in Downloads where it might get cleared.</div>
+          </div>
+        </div>
+      </div>
+      <div class="guide-note">
+        <strong>Note:</strong> Extensions loaded this way are not auto-updated. Re-download and reload whenever a new version is published here.
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="panel" id="upload-panel">
+    <div class="panel-toggle" onclick="togglePanel('upload-panel')">
+      <span class="panel-title">+ Upload an extension</span>
+      <i class="panel-chevron">›</i>
+    </div>
+    <div class="panel-body">
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept=".zip" onchange="onFilePick(this)">
+        <div class="drop-zone-icon">📦</div>
+        <div class="drop-zone-label"><strong>Click to browse</strong> or drag a ZIP here</div>
+        <div class="drop-zone-sub">.zip files only</div>
+      </div>
+      <div id="picked-file" class="picked-file" style="display:none"></div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="ext-name">Extension name <span style="color:#991b1b">*</span></label>
+          <input type="text" id="ext-name" placeholder="e.g. Hook Login">
+        </div>
+        <div class="field">
+          <label for="ext-interaction">Interaction required</label>
+          <select id="ext-interaction">
+            <option value="None required">None required</option>
+            <option value="Click to configure">Click to configure</option>
+            <option value="Tick options">Tick options</option>
+            <option value="Keyboard shortcut">Keyboard shortcut</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row-full">
+        <label for="ext-desc">Short description</label>
+        <input type="text" id="ext-desc" placeholder="One-liner of what this extension does">
+      </div>
+
+      <div class="form-row-full">
+        <label for="ext-details">Function (details)</label>
+        <textarea id="ext-details" rows="3" placeholder="Describe what the extension does in more detail…"></textarea>
+      </div>
+
+      <div class="form-row-full">
+        <label for="ext-requirements">Requirements</label>
+        <input type="text" id="ext-requirements" placeholder="e.g. Logged in to Google profile">
+      </div>
+
+      <button class="btn btn-primary" id="upload-btn" onclick="uploadExtension()">Upload Extension</button>
+      <div id="upload-status"></div>
+    </div>
+  </div>
+
+  <!-- Extensions list -->
+  <div class="list-header">
+    <div class="list-count" id="list-count">Loading extensions…</div>
+    <button class="btn btn-outline btn-sm" onclick="loadExtensions()">↻ Refresh</button>
+  </div>
+
+  <div id="ext-grid" class="ext-grid">
+    <div class="empty-state"><div class="spinner"></div></div>
+  </div>
+
+</div>
+
+<script>
+  let pickedFile = null;
+
+  function togglePanel(id) {
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  // ── File pick ──────────────────────────────────────────────────────────────
+  const dropZone = document.getElementById('drop-zone');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) setPickedFile(file);
+  });
+
+  function onFilePick(input) {
+    if (input.files[0]) setPickedFile(input.files[0]);
+  }
+
+  function setPickedFile(file) {
+    pickedFile = file;
+    const pickedEl = document.getElementById('picked-file');
+    dropZone.classList.add('has-file');
+    pickedEl.style.display = '';
+    pickedEl.innerHTML = `<span>📦 ${escHtml(file.name)}</span>`;
+
+    // Auto-fill name from filename if empty
+    const nameEl = document.getElementById('ext-name');
+    if (!nameEl.value.trim()) {
+      nameEl.value = file.name.replace(/\.zip$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+  }
+
+  // ── Upload ─────────────────────────────────────────────────────────────────
+  async function uploadExtension() {
+    const name         = document.getElementById('ext-name').value.trim();
+    const description  = document.getElementById('ext-desc').value.trim();
+    const details      = document.getElementById('ext-details').value.trim();
+    const interaction  = document.getElementById('ext-interaction').value;
+    const requirements = document.getElementById('ext-requirements').value.trim();
+    const statusEl     = document.getElementById('upload-status');
+
+    if (!name)       { statusEl.innerHTML = '<div class="status status-err">Extension name is required.</div>'; return; }
+    if (!pickedFile) { statusEl.innerHTML = '<div class="status status-err">Select a ZIP file.</div>'; return; }
+
+    const btn = document.getElementById('upload-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Uploading…';
+    statusEl.innerHTML = '';
+
+    const form = new FormData();
+    form.append('name', name);
+    form.append('description', description);
+    form.append('details', details);
+    form.append('interaction', interaction);
+    form.append('requirements', requirements);
+    form.append('file', pickedFile, pickedFile.name);
+
+    try {
+      const resp = await fetch('/api/extensions/upload', { method: 'POST', body: form });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+
+      statusEl.innerHTML = '<div class="status status-ok">Extension uploaded successfully.</div>';
+      document.getElementById('ext-name').value = '';
+      document.getElementById('ext-desc').value = '';
+      document.getElementById('ext-details').value = '';
+      document.getElementById('ext-requirements').value = '';
+      document.getElementById('ext-interaction').selectedIndex = 0;
+      pickedFile = null;
+      document.getElementById('picked-file').style.display = 'none';
+      dropZone.classList.remove('has-file');
+      document.getElementById('file-input').value = '';
+      setTimeout(() => {
+        document.getElementById('upload-panel').classList.remove('open');
+        statusEl.innerHTML = '';
+      }, 1500);
+      loadExtensions();
+    } catch (e) {
+      statusEl.innerHTML = `<div class="status status-err">Upload failed: ${escHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Upload Extension';
+    }
+  }
+
+  // ── Load list ──────────────────────────────────────────────────────────────
+  async function loadExtensions() {
+    const grid    = document.getElementById('ext-grid');
+    const countEl = document.getElementById('list-count');
+    grid.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+
+    try {
+      const resp = await fetch('/api/extensions/list');
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+
+      const exts = data.extensions.slice().reverse();
+      countEl.textContent = `${exts.length} extension${exts.length !== 1 ? 's' : ''}`;
+
+      if (!exts.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="icon">🧩</div>No extensions uploaded yet.</div>';
+        return;
+      }
+
+      grid.innerHTML = exts.map(renderCard).join('');
+    } catch (e) {
+      countEl.textContent = 'Failed to load';
+      grid.innerHTML = `<div class="status status-err">Could not load extensions: ${escHtml(e.message)}</div>`;
+    }
+  }
+
+  function renderCard(ext) {
+    const date = new Date(ext.uploadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    const detailsRows = [
+      ext.details      ? `<div><div class="ext-detail-label">Function</div><div class="ext-detail-value ext-detail-full">${escHtml(ext.details)}</div></div>` : '',
+      ext.requirements ? `<div><div class="ext-detail-label">Requirements</div><div class="ext-detail-value">${escHtml(ext.requirements)}</div></div>` : '',
+    ].filter(Boolean).join('');
+
+    return `
+      <div class="ext-card" id="card-${escAttr(ext.id)}">
+        <div class="ext-card-header">
+          <div class="ext-meta">
+            <div class="ext-name">${escHtml(ext.name)}</div>
+            ${ext.description ? `<div class="ext-description">${escHtml(ext.description)}</div>` : ''}
+            <div class="ext-badges">
+              <span class="badge badge-interaction">⚡ ${escHtml(ext.interaction || 'None required')}</span>
+            </div>
+            <div class="ext-date">Uploaded ${date}</div>
+          </div>
+          <div class="ext-actions">
+            <button class="btn btn-download btn-sm" onclick="downloadExt('${escAttr(ext.id)}', '${escAttr(ext.filename)}', this)">⬇ Download ZIP</button>
+            <button class="btn btn-outline btn-sm" onclick="startEdit('${escAttr(ext.id)}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteExt('${escAttr(ext.id)}', '${escAttr(ext.name)}', this)">Delete</button>
+          </div>
+        </div>
+        ${detailsRows ? `<div class="ext-details">${detailsRows}</div>` : ''}
+      </div>`;
+  }
+
+  // ── Download ───────────────────────────────────────────────────────────────
+  async function downloadExt(id, filename, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      const resp = await fetch(`/api/extensions/download?id=${encodeURIComponent(id)}&filename=${encodeURIComponent(filename)}`);
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      alert(`Download failed: ${e.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '⬇ Download ZIP';
+    }
+  }
+
+  // ── Edit ───────────────────────────────────────────────────────────────────
+  function startEdit(id) {
+    const card = document.getElementById(`card-${id}`);
+    const nameEl = card.querySelector('.ext-name');
+    const descEl = card.querySelector('.ext-description');
+
+    const currentName = nameEl.textContent.trim();
+    const currentDesc = descEl ? descEl.textContent.trim() : '';
+
+    nameEl.innerHTML = `<input type="text" class="edit-input" value="${escAttr(currentName)}" style="font-size:0.95rem;font-weight:600;width:100%;border:1px solid #d4d9e3;border-radius:4px;padding:0.25rem 0.5rem;outline:none;">`;
+    if (descEl) {
+      descEl.innerHTML = `<input type="text" class="edit-input" value="${escAttr(currentDesc)}" placeholder="Description" style="font-size:0.82rem;width:100%;border:1px solid #d4d9e3;border-radius:4px;padding:0.25rem 0.5rem;outline:none;color:#5a6478;">`;
+    }
+
+    const actionsEl = card.querySelector('.ext-actions');
+    actionsEl.innerHTML = `
+      <button class="btn btn-primary btn-sm" onclick="saveEdit('${escAttr(id)}', this)">Save</button>
+      <button class="btn btn-outline btn-sm" onclick="loadExtensions()">Cancel</button>`;
+  }
+
+  async function saveEdit(id, btn) {
+    const card = document.getElementById(`card-${id}`);
+    const inputs = card.querySelectorAll('.edit-input');
+    const name = inputs[0]?.value.trim();
+    const description = inputs[1]?.value.trim() ?? '';
+    if (!name) { alert('Name cannot be empty.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const resp = await fetch(`/api/extensions/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error);
+      loadExtensions();
+    } catch (e) {
+      alert(`Save failed: ${e.message}`);
+      btn.disabled = false;
+      btn.textContent = 'Save';
+    }
+  }
+
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  async function deleteExt(id, name, btn) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const resp = await fetch(`/api/extensions/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error);
+      document.getElementById(`card-${id}`)?.remove();
+      const remaining = document.querySelectorAll('.ext-card').length;
+      document.getElementById('list-count').textContent = `${remaining} extension${remaining !== 1 ? 's' : ''}`;
+      if (!remaining) loadExtensions();
+    } catch (e) {
+      alert(`Delete failed: ${e.message}`);
+      btn.disabled = false;
+      btn.textContent = 'Delete';
+    }
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function escAttr(s) {
+    return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  loadExtensions();
+</script>
+</body>
+</html>

@@ -296,5 +296,122 @@ app.delete('/api/skills/:id', async (req, res) => {
   }
 });
 
+// ── Chrome Extensions ─────────────────────────────────────────────────────────
+const extUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+const EXT_BASE     = 'tools/chrome-extensions/extensions';
+const EXT_MANIFEST = `${EXT_BASE}/manifest.json`;
+
+async function readExtManifest() {
+  const data = await ghGet(EXT_MANIFEST);
+  if (!data) return { extensions: [], sha: null };
+  return { extensions: JSON.parse(Buffer.from(data.content, 'base64').toString('utf8')), sha: data.sha };
+}
+
+// Upload
+app.post('/api/extensions/upload', extUpload.single('file'), async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const { name, description = '', details = '', interaction = 'None required', requirements = '' } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+    if (!req.file)     return res.status(400).json({ error: 'a ZIP file is required' });
+
+    const id       = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const filename = sanitizeName(req.file.originalname);
+
+    await ghPut(`${EXT_BASE}/${id}/${filename}`, req.file.buffer, `feat: add extension "${name.trim()}" (${filename})`);
+
+    const { extensions, sha } = await readExtManifest();
+    extensions.push({ id, name: name.trim(), description: description.trim(), details: details.trim(), interaction, requirements: requirements.trim(), filename, uploadedAt: new Date().toISOString() });
+    await ghPut(EXT_MANIFEST, JSON.stringify(extensions, null, 2), `chore: register extension "${name.trim()}"`, sha);
+
+    res.json({ ok: true, id, filename });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// List
+app.get('/api/extensions/list', async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const { extensions } = await readExtManifest();
+    res.json({ extensions });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Download (binary)
+app.get('/api/extensions/download', async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const id       = sanitizeName(String(req.query.id       || ''));
+    const filename = sanitizeName(String(req.query.filename || ''));
+    if (!id || !filename) return res.status(400).json({ error: 'id and filename required' });
+
+    const data = await ghGet(`${EXT_BASE}/${id}/${filename}`);
+    if (!data) return res.status(404).json({ error: 'File not found' });
+
+    let buffer;
+    if (data.content) {
+      buffer = Buffer.from(data.content.replace(/\n/g, ''), 'base64');
+    } else if (data.download_url) {
+      const r = await fetch(data.download_url, { headers: { Authorization: `Bearer ${GH_TOKEN}` } });
+      buffer = Buffer.from(await r.arrayBuffer());
+    } else {
+      return res.status(500).json({ error: 'Could not retrieve file content' });
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Edit metadata
+app.patch('/api/extensions/:id', async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const id = sanitizeName(req.params.id);
+    const { name, description, details, interaction, requirements } = req.body;
+    const { extensions, sha } = await readExtManifest();
+    const ext = extensions.find(e => e.id === id);
+    if (!ext) return res.status(404).json({ error: 'Extension not found' });
+    if (name         !== undefined) ext.name         = name.trim();
+    if (description  !== undefined) ext.description  = description.trim();
+    if (details      !== undefined) ext.details      = details.trim();
+    if (interaction  !== undefined) ext.interaction  = interaction;
+    if (requirements !== undefined) ext.requirements = requirements.trim();
+    await ghPut(EXT_MANIFEST, JSON.stringify(extensions, null, 2), `chore: update extension "${ext.name}"`, sha);
+    res.json({ ok: true, ext });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete
+app.delete('/api/extensions/:id', async (req, res) => {
+  if (!GH_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN env var not set on server' });
+  try {
+    const id = sanitizeName(req.params.id);
+    const { extensions, sha } = await readExtManifest();
+    const idx = extensions.findIndex(e => e.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Extension not found' });
+    const [ext] = extensions.splice(idx, 1);
+
+    const fileData = await ghGet(`${EXT_BASE}/${id}/${ext.filename}`);
+    if (fileData) await ghDelete(`${EXT_BASE}/${id}/${ext.filename}`, `chore: remove extension "${ext.name}"`, fileData.sha);
+
+    const refreshed = await ghGet(EXT_MANIFEST);
+    await ghPut(EXT_MANIFEST, JSON.stringify(extensions, null, 2), `chore: remove extension "${ext.name}"`, refreshed?.sha);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
