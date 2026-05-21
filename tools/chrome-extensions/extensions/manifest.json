@@ -18,5 +18,15 @@
     "requirements": "",
     "filename": "metric-rename.zip",
     "uploadedAt": "2026-05-21T10:35:09.931Z"
+  },
+  {
+    "id": "mpfdiv5d93bo",
+    "name": "Custom Field Rename",
+    "description": "Renames and enables account custom fields",
+    "details": "these will still need to be enabled in the account view tab",
+    "interaction": "Click to configure",
+    "requirements": "",
+    "filename": "custom-field-rename.zip",
+    "uploadedAt": "2026-05-21T10:54:37.718Z"
   }
 ]
