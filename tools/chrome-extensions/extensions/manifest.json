@@ -1,0 +1,12 @@
+[
+  {
+    "id": "mpfcqex6uke4",
+    "name": "Hook Login",
+    "description": "Auto log out and log in to Hook instances",
+    "details": "Automatically uses the email of the current Chrome profile to step through authentication for logging into Hook.\r\nWhen in Hook, press L to automatically log out and do the process again instantly.\r\n\r\nN.B. when you log in to a customer Hook instance, the cursor defaults to the Echo chat, you’ll need to click out of the text area so that you’re not typing for the L key to work!",
+    "interaction": "Keyboard shortcut",
+    "requirements": "Logged in to Google profile (top right of UI), click through “Turn on Sync…” if it shows",
+    "filename": "hook-login.zip",
+    "uploadedAt": "2026-05-21T10:32:30.118Z"
+  }
+]
