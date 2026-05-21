@@ -8,5 +8,15 @@
     "requirements": "Logged in to Google profile (top right of UI), click through “Turn on Sync…” if it shows",
     "filename": "hook-login.zip",
     "uploadedAt": "2026-05-21T10:32:30.118Z"
+  },
+  {
+    "id": "mpfctu2zpmki",
+    "name": "Metric Rename",
+    "description": "Renames and activates metrics in the UI",
+    "details": "renames all metrics that have the default name into a human readable format. Logic is as follows:\r\nCamel Case\r\n‘_’ turn into ‘ ‘\r\n‘_pct_’ turn into ‘ % ‘\r\nSpeed is 1 metric per second (may be delays due to internet latency, this is unavoidable)",
+    "interaction": "Click to configure",
+    "requirements": "",
+    "filename": "metric-rename.zip",
+    "uploadedAt": "2026-05-21T10:35:09.931Z"
   }
 ]
