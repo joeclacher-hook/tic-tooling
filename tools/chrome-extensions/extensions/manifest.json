@@ -22,7 +22,7 @@
   {
     "id": "mpfdiv5d93bo",
     "name": "Custom Field Rename",
-    "description": "Renames and enables account custom fields",
+    "description": "Renames and enables (in customer table) account custom fields",
     "details": "these will still need to be enabled in the account view tab",
     "interaction": "Click to configure",
     "requirements": "",
