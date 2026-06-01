@@ -38,5 +38,15 @@
     "requirements": "",
     "filename": "metric-categoriser.zip",
     "uploadedAt": "2026-05-21T12:25:42.216Z"
+  },
+  {
+    "id": "mpv9yis71iaq",
+    "name": "Reset Processors",
+    "description": "Bulk reset processors",
+    "details": "Use *XYZ* to fuzzy match / regex certain processors. for example:\r\n*account*metrics* will select all processors with \"account [] metrics\" in the name\r\n*accounts* will select everything with \"accounts\" in the name",
+    "interaction": "Click to configure",
+    "requirements": "",
+    "filename": "processors.zip",
+    "uploadedAt": "2026-06-01T13:59:09.185Z"
   }
 ]
