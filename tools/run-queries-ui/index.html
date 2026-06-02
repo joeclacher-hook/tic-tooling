@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Run Queries UI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1d23;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1d23;
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header a { color: #8b9ab0; text-decoration: none; font-size: 0.85rem; }
+    header a:hover { color: #fff; }
+    header .sep { color: #3d4555; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+
+    .page { max-width: 700px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e4e8ee;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1a1d23;
+      margin-bottom: 1.25rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem 1.1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn-download { background: #fff; border: 1px solid #d4d9e3; color: #3d4555; }
+    .btn-download:hover { border-color: #059669; color: #059669; background: #f0fdf4; }
+
+    .guide-steps { counter-reset: steps; }
+    .guide-step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.1rem;
+      align-items: flex-start;
+    }
+    .guide-step:last-child { margin-bottom: 0; }
+    .step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      background: #1a1d23;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+    .step-content { flex: 1; }
+    .step-title { font-size: 0.88rem; font-weight: 600; color: #1a1d23; margin-bottom: 0.2rem; }
+    .step-desc { font-size: 0.82rem; color: #5a6478; line-height: 1.55; }
+    .step-desc code {
+      font-family: 'SF Mono', Monaco, monospace;
+      background: #f0f2f6;
+      border-radius: 3px;
+      padding: 0.1em 0.4em;
+      font-size: 0.85em;
+      color: #3d4555;
+    }
+
+    .guide-note {
+      margin-top: 1.25rem;
+      padding: 0.75rem 1rem;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      color: #92400e;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/">← Hub</a>
+  <span class="sep">/</span>
+  <h1>📊 Run Queries UI</h1>
+</header>
+
+<div class="page">
+
+  <div class="card">
+    <div class="card-title">⬇ Download</div>
+    <a class="btn btn-download" href="/tools/chrome-extensions/desktop/runqueries_ui.zip" download>⬇ Download ZIP</a>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📖 How to install</div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Download and unzip</div>
+          <div class="step-desc">Download the ZIP above and unzip it to a permanent location (e.g. <code>~/Documents/runqueries_ui</code>). Don't leave it in Downloads.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Double-click <code>launch.command</code></div>
+          <div class="step-desc">Inside the unzipped folder, double-click <code>launch.command</code>. On first run macOS may block it — right-click → <strong>Open</strong> to allow it.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Wait for first-time setup</div>
+          <div class="step-desc">The first launch installs dependencies automatically. A browser window will open at <code>http://localhost:8501</code> when ready.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">To quit</div>
+          <div class="step-desc">Close the Terminal window that opened, or press <code>Ctrl+C</code> in it.</div>
+        </div>
+      </div>
+    </div>
+    <div class="guide-note">
+      <strong>Requires Python 3</strong> — install from python.org if not already installed. Re-download and replace the folder to update.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
