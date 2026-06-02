@@ -273,6 +273,15 @@
       vertical-align: middle;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    .section-heading {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #8b9ab0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+    }
   </style>
 </head>
 <body>
@@ -284,6 +293,59 @@
 </header>
 
 <div class="page">
+
+  <!-- Desktop Apps -->
+  <div class="section-heading">Desktop Apps</div>
+
+  <!-- Run Queries UI -->
+  <div class="panel open" id="runqueries-panel">
+    <div class="panel-toggle" onclick="togglePanel('runqueries-panel')">
+      <span class="panel-title">🖥 Run Queries UI</span>
+      <i class="panel-chevron">›</i>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:0.85rem;color:#5a6478;padding-top:1rem;line-height:1.6;margin-bottom:1.5rem;">
+        A local desktop app for running queries. Opens in your browser — no internet required after setup. Mac only.
+      </p>
+      <a class="btn btn-download" href="/tools/chrome-extensions/desktop/runqueries_ui.zip" download>⬇ Download ZIP</a>
+      <div class="guide-steps" style="margin-top:1.5rem">
+        <div class="guide-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Download and unzip</div>
+            <div class="step-desc">Download the ZIP above and unzip it to a permanent location (e.g. <code>~/Documents/runqueries_ui</code>). Don't leave it in Downloads.</div>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Double-click <code>launch.command</code></div>
+            <div class="step-desc">Inside the unzipped folder, double-click <code>launch.command</code>. On first run macOS may block it — right-click → <strong>Open</strong> to allow it.</div>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Wait for first-time setup</div>
+            <div class="step-desc">The first launch installs dependencies automatically. A browser window will open at <code>http://localhost:8501</code> when ready.</div>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">To quit</div>
+            <div class="step-desc">Close the Terminal window that opened, or press <code>Ctrl+C</code> in it.</div>
+          </div>
+        </div>
+      </div>
+      <div class="guide-note" style="margin-top:1.25rem">
+        <strong>Requires Python 3</strong> — install from python.org if not already installed. Re-download and replace the folder to update.
+      </div>
+    </div>
+  </div>
+
+  <!-- Chrome Extensions -->
+  <div class="section-heading" style="margin-top:0.5rem">Chrome Extensions</div>
 
   <!-- Install Guide -->
   <div class="panel open" id="install-panel">
