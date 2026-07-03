@@ -16,14 +16,5 @@
       "technical-requirements-generator_SKILL.md"
     ],
     "uploadedAt": "2026-05-12T13:59:39.743Z"
-  },
-  {
-    "id": "mr53ap76zkh8",
-    "name": "Echo Prompt Generator",
-    "description": "Given documents from a customer that describe their CS processes and playbooks, this skill creates all the prompts in a customised format needed for Echo",
-    "files": [
-      "Echo_Prompt_Skill.md"
-    ],
-    "uploadedAt": "2026-07-03T15:30:03.708Z"
   }
 ]
