@@ -9,15 +9,6 @@
     "uploadedAt": "2026-05-07T18:44:53.261Z"
   },
   {
-    "id": "mp2o4izpxo2r",
-    "name": "Echo Prompt Creator",
-    "description": "Given documents from a customer that describe their CS processes and playbooks, this skill creates all the prompts in a customised format needed for Echo",
-    "files": [
-      "echo-context-prompt-generator-SKILL.md"
-    ],
-    "uploadedAt": "2026-05-12T13:30:24.518Z"
-  },
-  {
     "id": "mp2p652hv3i2",
     "name": "Technical Requirements Generator",
     "description": "Given the completed Success Plan slide deck and any additional documents from a customer about their CS process, this skill will create a Google Sheet list of technical requirements for the implementation process",
